@@ -57,7 +57,7 @@ export default function DeleteButton({
       disabled={pending}
       aria-label={`Delete this ${noun}`}
       title="Delete"
-      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/55 text-white hover:bg-red-600 flex items-center justify-center backdrop-blur-sm transition opacity-100 sm:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 z-10"
+      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/55 text-white hover:bg-red-600 hidden sm:flex items-center justify-center backdrop-blur-sm transition opacity-0 group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 z-10"
     >
       <svg
         viewBox="0 0 24 24"
