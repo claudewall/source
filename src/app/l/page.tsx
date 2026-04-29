@@ -153,7 +153,7 @@ export default async function LessonsPage({
           )}
         </div>
       ) : (
-        <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
+        <div className="p-4 sm:p-6 columns-1 sm:columns-2 lg:columns-3 gap-4">
           {lessons.map((l) => {
             const id = String((l as { _id: { toString(): string } })._id)
             const tags = ((l as { tags?: unknown }).tags ?? []) as string[]
@@ -166,7 +166,7 @@ export default async function LessonsPage({
             return (
               <div
                 key={id}
-                className="relative bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden"
+                className="relative mb-4 break-inside-avoid bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden"
               >
                 <DeleteButton
                   id={id}
