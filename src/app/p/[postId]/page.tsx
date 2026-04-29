@@ -4,8 +4,9 @@ import { ObjectId } from 'mongodb'
 import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
-import DeleteQuoteButton from '../../_components/DeleteQuoteButton'
+import DeleteButton from '../../_components/DeleteButton'
 import LikeButton from '../../_components/LikeButton'
+import { deletePost } from '../../_actions/posts'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,8 +93,10 @@ export default async function Page({
                 variant="inline"
               />
               {isOwn && (
-                <DeleteQuoteButton
-                  postId={postId}
+                <DeleteButton
+                  id={postId}
+                  action={deletePost}
+                  noun="quote"
                   redirectTo="/"
                   variant="inline"
                 />

@@ -2,16 +2,19 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { deletePost } from '../_actions/posts'
 
 type Variant = 'overlay' | 'inline'
 
-export default function DeleteQuoteButton({
-  postId,
+export default function DeleteButton({
+  id,
+  action,
+  noun = 'item',
   redirectTo,
   variant = 'overlay',
 }: {
-  postId: string
+  id: string
+  action: (id: string) => Promise<void>
+  noun?: string
   redirectTo?: string
   variant?: Variant
 }) {
@@ -22,10 +25,10 @@ export default function DeleteQuoteButton({
     e.preventDefault()
     e.stopPropagation()
     if (pending) return
-    if (!window.confirm('Delete this quote? This cannot be undone.')) return
+    if (!window.confirm(`Delete this ${noun}? This cannot be undone.`)) return
     startTransition(async () => {
       try {
-        await deletePost(postId)
+        await action(id)
         if (redirectTo) router.push(redirectTo)
         else router.refresh()
       } catch (err) {
@@ -52,7 +55,7 @@ export default function DeleteQuoteButton({
       type="button"
       onClick={onClick}
       disabled={pending}
-      aria-label="Delete this quote"
+      aria-label={`Delete this ${noun}`}
       title="Delete"
       className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/55 text-white hover:bg-red-600 flex items-center justify-center backdrop-blur-sm transition disabled:opacity-50 z-10"
     >

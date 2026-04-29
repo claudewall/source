@@ -4,8 +4,9 @@ import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from './_components/SiteHeader'
 import InstallBanner from './_components/InstallBanner'
-import DeleteQuoteButton from './_components/DeleteQuoteButton'
+import DeleteButton from './_components/DeleteButton'
 import LikeButton from './_components/LikeButton'
+import { deletePost } from './_actions/posts'
 
 export const dynamic = 'force-dynamic'
 
@@ -181,7 +182,13 @@ export default async function Home({
                   key={id}
                   className="relative mb-4 break-inside-avoid bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition"
                 >
-                  {isOwn && <DeleteQuoteButton postId={id} />}
+                  {isOwn && (
+                    <DeleteButton
+                      id={id}
+                      action={deletePost}
+                      noun="quote"
+                    />
+                  )}
                   <Link href={`/p/${id}`}>
                     <img
                       src={`/api/og/${id}`}

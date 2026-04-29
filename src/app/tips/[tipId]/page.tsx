@@ -4,6 +4,8 @@ import { ObjectId } from 'mongodb'
 import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
+import DeleteButton from '../../_components/DeleteButton'
+import { deleteTip } from '../../_actions/tips'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,7 +94,13 @@ export default async function TipDetailPage({
               {lang && <span className="font-mono">{lang}</span>}
               {model && <span className="font-mono">{model}</span>}
               {isOwn && (
-                <span className="text-neutral-400">(you)</span>
+                <DeleteButton
+                  id={tipId}
+                  action={deleteTip}
+                  noun="tip"
+                  redirectTo="/tips"
+                  variant="inline"
+                />
               )}
             </div>
           </div>

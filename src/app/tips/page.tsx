@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { db } from '@/lib/mongo'
+import { auth } from '@/lib/auth'
 import SiteHeader from '../_components/SiteHeader'
+import DeleteButton from '../_components/DeleteButton'
+import { deleteTip } from '../_actions/tips'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +15,10 @@ export default async function TipsPage({
   const sp = await searchParams
   const rawTag = (sp.tag ?? '').toLowerCase().trim()
   const tagFilter = /^[a-z0-9][a-z0-9-]*$/.test(rawTag) ? rawTag : ''
+
+  const session = await auth()
+  const sessionHandle = (session?.user as { handle?: string } | undefined)
+    ?.handle
 
   let tips: Array<Record<string, unknown>> = []
   try {
@@ -93,11 +100,20 @@ export default async function TipsPage({
             const body = String((t as { body?: string }).body ?? '')
             const code = (t as { code?: string }).code
             const lang = (t as { lang?: string }).lang
+            const isOwn =
+              sessionHandle !== undefined && sessionHandle === handle
             return (
               <div
                 key={id}
-                className="mb-4 break-inside-avoid bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden"
+                className="relative mb-4 break-inside-avoid bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden"
               >
+                {isOwn && (
+                  <DeleteButton
+                    id={id}
+                    action={deleteTip}
+                    noun="tip"
+                  />
+                )}
                 <Link href={`/tips/${id}`} className="block p-5 space-y-3">
                   <h3 className="font-serif text-lg leading-snug text-neutral-900">
                     {title}
