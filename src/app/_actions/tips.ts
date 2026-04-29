@@ -31,8 +31,8 @@ export async function deleteTip(tipId: string) {
     throw new Error('not found or not yours')
   }
 
-  revalidatePath('/tips')
-  revalidatePath(`/tips/${tipId}`)
+  revalidatePath('/t')
+  revalidatePath(`/t/${tipId}`)
   if (sessionUser.handle) {
     revalidatePath(`/u/${sessionUser.handle}`)
   }

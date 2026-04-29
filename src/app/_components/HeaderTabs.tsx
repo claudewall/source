@@ -26,7 +26,9 @@ export default function HeaderTabs() {
   // Search lives in tip-territory (it queries the tips index), so /search
   // counts as Tips for active-tab purposes.
   const onTips =
-    pathname.startsWith('/tips') || pathname.startsWith('/search')
+    pathname === '/t' ||
+    pathname.startsWith('/t/') ||
+    pathname.startsWith('/search')
 
   const baseTab =
     'py-1.5 border-b-2 text-sm transition whitespace-nowrap'
@@ -37,13 +39,13 @@ export default function HeaderTabs() {
   return (
     <div className="flex items-center gap-4 sm:gap-5">
       <Link
-        href="/"
+        href="/p"
         className={`${baseTab} ${!onTips ? activeTab : inactiveTab}`}
       >
         Quotes
       </Link>
       <Link
-        href="/tips"
+        href="/t"
         className={`${baseTab} ${onTips ? activeTab : inactiveTab}`}
       >
         Tips

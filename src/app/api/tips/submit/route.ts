@@ -127,6 +127,6 @@ export async function POST(req: NextRequest) {
   const origin = process.env.AUTH_URL || process.env.NEXTAUTH_URL || ''
   return Response.json({
     id,
-    url: `${origin}/tips/${id}`,
+    url: `${origin}/t/${id}`,
   })
 }

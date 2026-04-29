@@ -31,7 +31,7 @@ export async function deletePost(postId: string) {
     throw new Error('not found or not yours')
   }
 
-  revalidatePath('/')
+  revalidatePath('/p')
   if (sessionUser.handle) {
     revalidatePath(`/u/${sessionUser.handle}`)
   }

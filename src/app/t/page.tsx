@@ -61,7 +61,7 @@ export default async function TipsPage({
               #{tagFilter}
             </span>
             <Link
-              href="/tips"
+              href="/t"
               className="text-neutral-500 hover:underline"
             >
               clear
@@ -78,7 +78,7 @@ export default async function TipsPage({
                 No tips with #{tagFilter} yet.
               </p>
               <p className="text-sm">
-                <Link href="/tips" className="underline">
+                <Link href="/t" className="underline">
                   Browse all tips
                 </Link>
               </p>
@@ -123,7 +123,7 @@ export default async function TipsPage({
                     noun="tip"
                   />
                 )}
-                <Link href={`/tips/${id}`} className="block p-5 space-y-3">
+                <Link href={`/t/${id}`} className="block p-5 space-y-3">
                   <h3 className="font-serif text-lg leading-snug text-neutral-900">
                     {title}
                   </h3>

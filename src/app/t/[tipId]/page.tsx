@@ -66,7 +66,7 @@ export default async function TipDetailPage({
               {tags.map((t) => (
                 <Link
                   key={t}
-                  href={`/tips?tag=${encodeURIComponent(t)}`}
+                  href={`/t?tag=${encodeURIComponent(t)}`}
                   className="text-xs bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-2 py-0.5 rounded transition"
                 >
                   #{t}
@@ -98,7 +98,7 @@ export default async function TipDetailPage({
                   id={tipId}
                   action={deleteTip}
                   noun="tip"
-                  redirectTo="/tips"
+                  redirectTo="/t"
                   variant="inline"
                 />
               )}

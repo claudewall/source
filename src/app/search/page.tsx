@@ -85,7 +85,7 @@ export default async function SearchPage({
           {tips.map((t) => (
             <Link
               key={t._id}
-              href={`/tips/${t._id}`}
+              href={`/t/${t._id}`}
               className="block bg-white rounded-2xl shadow-sm hover:shadow-md transition p-5"
             >
               <div className="flex items-start gap-3">
