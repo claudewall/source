@@ -9,17 +9,37 @@ const ENDPOINTS = {
   tip: '/api/tips/submit',
 }
 
+function readBody(bodyPath) {
+  if (bodyPath && bodyPath !== '-') {
+    try {
+      return fs.readFileSync(bodyPath)
+    } catch (err) {
+      console.error(`Could not read body file ${bodyPath}: ${err.message}`)
+      process.exit(1)
+    }
+  }
+  // Read from stdin (so slash commands can pipe a heredoc).
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    process.stdin.on('data', (chunk) => chunks.push(chunk))
+    process.stdin.on('end', () => resolve(Buffer.concat(chunks)))
+    process.stdin.on('error', reject)
+  })
+}
+
 async function main() {
   // argv[0] = node
   // argv[1] = path to claudewall.js
-  // argv[2] = "publish" (subcommand)
+  // argv[2] = "publish"
   // argv[3] = "quote" | "tip"
-  // argv[4] = path to body file
+  // argv[4] = optional path to body file (or "-" / omitted to read stdin)
   const kind = process.argv[3]
   const bodyPath = process.argv[4]
 
-  if (!kind || !bodyPath || !Object.hasOwn(ENDPOINTS, kind)) {
-    console.error('Usage: claudewall publish <quote|tip> <path-to-body.json>')
+  if (!kind || !Object.hasOwn(ENDPOINTS, kind)) {
+    console.error('Usage:')
+    console.error('  claudewall publish <quote|tip> <path-to-body.json>')
+    console.error('  claudewall publish <quote|tip>            # reads JSON from stdin')
     process.exit(1)
   }
 
@@ -40,11 +60,11 @@ async function main() {
     process.exit(1)
   }
 
-  let body
-  try {
-    body = fs.readFileSync(bodyPath)
-  } catch (err) {
-    console.error(`Could not read body file ${bodyPath}: ${err.message}`)
+  const body = await readBody(bodyPath)
+  if (!body || body.length === 0) {
+    console.error(
+      'Empty body. Pass a file path or pipe JSON to stdin (e.g. via heredoc).',
+    )
     process.exit(1)
   }
 

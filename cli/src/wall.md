@@ -35,35 +35,19 @@ Wait for the user's reply.
 
 If the user replied `none`, stop.
 
-For **each** chosen quote:
-
-**a. Write the JSON body** with the **Write** tool to a UTF-8 file at an absolute path:
-
-- macOS / Linux: `~/.claudewall/.submit.json` resolved to absolute (e.g. `/Users/<you>/.claudewall/.submit.json`)
-- Windows: `C:\Users\<you>\.claudewall\.submit.json`
-
-Single-line JSON object, properly escape `"` and `\` inside the quote text:
+For **each** chosen quote, run **one** Bash invocation that pipes the JSON body to the publisher via a heredoc — no temp file, no extra Write step:
 
 ```
+npx claudewall publish quote <<'EOF'
 {"quote":"<the quote>","model":"<your model id>","rationale":"<one line>"}
+EOF
 ```
 
-Omit the `"model"` field entirely if you don't know your model id.
+- The single-quoted `'EOF'` delimiter prevents shell variable expansion — the JSON content is sent verbatim
+- Properly escape `"` and `\` in JSON string values
+- Omit the `"model"` field entirely if you don't know your model id
+- The binary loads the auth token from `~/.claudewall/config.json` at runtime — **do not** add an `Authorization` header, **do not** invoke `curl` directly, **do not** read or print the token anywhere
 
-**b. Publish** via the **Bash** tool:
+On success, the command prints **just the URL** on stdout. Print that URL to the user.
 
-```
-npx claudewall publish quote <absolute-path-to-.submit.json>
-```
-
-This binary loads the auth token from `~/.claudewall/config.json` at runtime — **do not** add an `Authorization` header, **do not** invoke `curl` directly, **do not** read or print the token anywhere. On success, it prints **just the URL** of the published quote on stdout. Print that URL to the user.
-
-On failure the binary exits non-zero with the reason on stderr. If it says to run `npx claudewall init`, tell the user to do that and stop. Otherwise show the error and continue with the next quote.
-
-**c. After all submissions**, delete the temp file via **Bash**:
-
-```
-rm <absolute-path>
-```
-
-(Windows: `del "<path>"`.)
+On failure (non-zero exit), the reason is on stderr. If it says to run `npx claudewall init`, tell the user to do that and stop. Otherwise show the error and continue with the next quote.
