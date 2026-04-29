@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { db } from '@/lib/mongo'
+import { embedText } from '@/lib/embedding'
 
 const MAX_TITLE = 120
 const MAX_BODY = 1000
@@ -84,6 +85,13 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Best-effort embedding for vector search. Fails open — a Voyage outage
+  // or missing key just means this tip isn't searchable until backfilled.
+  const corpus = [title, tipBody, code, tags.join(' ')]
+    .filter(Boolean)
+    .join('\n')
+  const embedding = await embedText(corpus)
+
   const tip = {
     authorId: user._id,
     authorHandle: (user as { handle?: string }).handle,
@@ -96,6 +104,7 @@ export async function POST(req: NextRequest) {
     tags,
     model: body.model ? String(body.model).slice(0, 80) : undefined,
     likeCount: 0,
+    embedding,
     createdAt: new Date(),
   }
   const r = await d.collection('tips').insertOne(tip)

@@ -89,6 +89,25 @@ export default async function SiteHeader() {
         >
           Tips
         </Link>
+        <Link
+          href="/search"
+          className="px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
+          aria-label="Search"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </Link>
         <a
           href="https://github.com/claudewall"
           target="_blank"
