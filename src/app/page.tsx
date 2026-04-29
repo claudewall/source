@@ -77,18 +77,42 @@ export default async function Home() {
       </header>
 
       {posts.length === 0 ? (
-        <div className="max-w-xl mx-auto p-10 text-center text-neutral-600 space-y-4">
-          <p className="font-serif text-2xl text-neutral-800">
+        <div className="max-w-xl mx-auto p-10 text-center text-neutral-700 space-y-8">
+          <p className="font-serif text-2xl text-neutral-900">
             A wall of memorable lines from Claude Code sessions.
           </p>
-          <p className="text-sm">
-            Install the slash command:
-            <br />
-            <code className="inline-block mt-2 bg-neutral-100 px-3 py-1 rounded font-mono">
-              npx claudewall init
-            </code>
-          </p>
-          <p className="text-sm">Then run <code>/wall</code> in any session.</p>
+
+          <ol className="text-left space-y-5 text-sm">
+            <li className="flex gap-4">
+              <span className="font-serif text-2xl text-neutral-400 leading-none">1.</span>
+              <div className="space-y-2">
+                <p>In any Claude Code session, ask Claude to run:</p>
+                <code className="inline-block bg-neutral-100 px-3 py-1 rounded font-mono">
+                  npx claudewall init
+                </code>
+                <p className="text-xs text-neutral-500">
+                  Approve the device code in the browser when it opens.
+                </p>
+              </div>
+            </li>
+
+            <li className="flex gap-4">
+              <span className="font-serif text-2xl text-neutral-400 leading-none">2.</span>
+              <p className="pt-1">
+                Exit Claude Code (it only loads slash commands at session start).
+              </p>
+            </li>
+
+            <li className="flex gap-4">
+              <span className="font-serif text-2xl text-neutral-400 leading-none">3.</span>
+              <div className="space-y-2 pt-1">
+                <p>Start a new session and run:</p>
+                <code className="inline-block bg-neutral-100 px-3 py-1 rounded font-mono">
+                  /wall
+                </code>
+              </div>
+            </li>
+          </ol>
         </div>
       ) : (
         <div className="p-6 columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
