@@ -5,8 +5,7 @@ const path = require('node:path')
 const os = require('node:os')
 
 const ENDPOINTS = {
-  quote: '/api/p/submit',
-  tip: '/api/t/submit',
+  lesson: '/api/l/submit',
 }
 
 function readBody(bodyPath) {
@@ -18,7 +17,6 @@ function readBody(bodyPath) {
       process.exit(1)
     }
   }
-  // Read from stdin (so slash commands can pipe a heredoc).
   return new Promise((resolve, reject) => {
     const chunks = []
     process.stdin.on('data', (chunk) => chunks.push(chunk))
@@ -28,18 +26,12 @@ function readBody(bodyPath) {
 }
 
 async function main() {
-  // argv[0] = node
-  // argv[1] = path to claudewall.js
-  // argv[2] = "publish"
-  // argv[3] = "quote" | "tip"
-  // argv[4] = optional path to body file (or "-" / omitted to read stdin)
   const kind = process.argv[3]
   const bodyPath = process.argv[4]
 
   if (!kind || !Object.hasOwn(ENDPOINTS, kind)) {
     console.error('Usage:')
-    console.error('  claudewall publish <quote|tip> <path-to-body.json>')
-    console.error('  claudewall publish <quote|tip>            # reads JSON from stdin')
+    console.error('  claudewall publish lesson [body.json]   # body via stdin if omitted')
     process.exit(1)
   }
 
@@ -62,9 +54,7 @@ async function main() {
 
   const body = await readBody(bodyPath)
   if (!body || body.length === 0) {
-    console.error(
-      'Empty body. Pass a file path or pipe JSON to stdin (e.g. via heredoc).',
-    )
+    console.error('Empty body. Pipe JSON to stdin or pass a body file.')
     process.exit(1)
   }
 
@@ -76,8 +66,6 @@ async function main() {
     res = await fetch(url, {
       method: 'POST',
       headers: {
-        // Token is read from disk at runtime — never inlined into the
-        // shell command or the slash-command markdown.
         Authorization: 'Bearer ' + cfg.token,
         'Content-Type': 'application/json',
       },
@@ -106,7 +94,7 @@ async function main() {
       return
     }
   } catch {
-    // Fall through.
+    // fall through
   }
   console.log(text)
 }

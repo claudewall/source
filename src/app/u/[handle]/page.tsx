@@ -4,14 +4,10 @@ import { ObjectId } from 'mongodb'
 import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
-import DeleteButton from '../../_components/DeleteButton'
-import LikeButton from '../../_components/LikeButton'
-import FollowButton from './FollowButton'
-import { deletePost } from '../../_actions/posts'
 
 export const dynamic = 'force-dynamic'
 
-export default async function Page({
+export default async function ProfilePage({
   params,
 }: {
   params: Promise<{ handle: string }>
@@ -23,49 +19,28 @@ export default async function Page({
   if (!user) notFound()
 
   const session = await auth()
-  const sessionUser = session?.user as
-    | { id?: string; handle?: string }
-    | undefined
+  const sessionUser = session?.user as { handle?: string } | undefined
   const isOwn = sessionUser?.handle === handle
 
-  let isFollowing = false
-  if (sessionUser?.id && !isOwn) {
-    const followerId = new ObjectId(sessionUser.id)
-    isFollowing = !!(await d.collection('follows').findOne({
-      followerId,
-      followeeId: user!._id,
-    }))
-  }
+  // Lessons are private — only show count to others, full list to owner.
+  const lessonCount = await d
+    .collection('lessons')
+    .countDocuments({ authorId: user!._id })
 
-  const [posts, followers, following] = await Promise.all([
-    d
-      .collection('posts')
-      .find({ authorId: user!._id })
-      .sort({ createdAt: -1 })
-      .limit(60)
-      .toArray(),
-    d.collection('follows').countDocuments({ followeeId: user!._id }),
-    d.collection('follows').countDocuments({ followerId: user!._id }),
-  ])
-
-  let likedSet = new Set<string>()
-  if (sessionUser?.id && posts.length > 0) {
-    const ids = posts.map((p) => (p as { _id: ObjectId })._id)
-    const liked = await d
-      .collection('likes')
-      .find({
-        userId: new ObjectId(sessionUser.id),
-        postId: { $in: ids },
-      })
-      .project({ postId: 1 })
-      .toArray()
-    likedSet = new Set(liked.map((l) => String(l.postId)))
-  }
+  const lessons = isOwn
+    ? await d
+        .collection('lessons')
+        .find({ authorId: user!._id })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray()
+    : []
 
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
       <SiteHeader />
-      <div className="max-w-5xl mx-auto p-6">
+
+      <div className="max-w-3xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
           {user!.image && (
             <img
@@ -75,63 +50,58 @@ export default async function Page({
             />
           )}
           <div>
-            <h1 className="text-2xl">@{(user as unknown as { handle: string }).handle}</h1>
+            <h1 className="text-2xl">
+              @{(user as unknown as { handle: string }).handle}
+            </h1>
             {user!.name && (
               <div className="text-neutral-600">{user!.name as string}</div>
             )}
             <div className="text-sm text-neutral-500 mt-1">
-              {followers} follower{followers === 1 ? '' : 's'} ·{' '}
-              {following} following · {posts.length} quote
-              {posts.length === 1 ? '' : 's'}
+              {lessonCount} lesson{lessonCount === 1 ? '' : 's'}
             </div>
           </div>
-          {!isOwn && sessionUser?.id && (
-            <div className="ml-auto">
-              <FollowButton handle={handle} initial={isFollowing} />
-            </div>
-          )}
         </div>
 
-        {posts.length === 0 ? (
-          <p className="text-center text-neutral-500 mt-16">No quotes yet.</p>
-        ) : (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4">
-            {posts.map((p) => {
-              const id = String(
-                (p as { _id: { toString(): string } })._id,
+        {!isOwn && (
+          <p className="text-sm text-neutral-500 italic">
+            Lessons are private to their author.
+          </p>
+        )}
+
+        {isOwn && lessons.length > 0 && (
+          <div className="space-y-3">
+            {lessons.map((l) => {
+              const id = String((l as { _id: { toString(): string } })._id)
+              const title = String((l as { title?: string }).title ?? '')
+              const trigger = String(
+                (l as { trigger?: string }).trigger ?? '',
               )
-              const quote = String((p as { quote?: string }).quote ?? '')
-              const likeCount =
-                (p as { likeCount?: number }).likeCount ?? 0
+              const tags = ((l as { tags?: unknown }).tags ?? []) as string[]
               return (
-                <div
+                <Link
                   key={id}
-                  className="relative mb-4 break-inside-avoid bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition"
+                  href={`/l/${id}`}
+                  className="block bg-white rounded-2xl shadow-sm hover:shadow-md transition p-4 space-y-2"
                 >
-                  {isOwn && (
-                    <DeleteButton
-                      id={id}
-                      action={deletePost}
-                      noun="quote"
-                    />
+                  <h3 className="font-serif text-base leading-snug">
+                    {title}
+                  </h3>
+                  <p className="text-xs text-neutral-500 italic line-clamp-1">
+                    when: {trigger}
+                  </p>
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {tags.map((tg) => (
+                        <span
+                          key={tg}
+                          className="text-xs bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded"
+                        >
+                          #{tg}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  <Link href={`/p/${id}`}>
-                    <img
-                      src={`/api/p/og/${id}`}
-                      alt={quote}
-                      className="w-full block"
-                      loading="lazy"
-                    />
-                  </Link>
-                  <div className="px-3 py-2 flex items-center justify-end">
-                    <LikeButton
-                      postId={id}
-                      initialLiked={likedSet.has(id)}
-                      initialCount={likeCount}
-                      signedIn={!!sessionUser?.id}
-                    />
-                  </div>
-                </div>
+                </Link>
               )
             })}
           </div>

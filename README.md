@@ -1,78 +1,100 @@
 # claudewall
 
-A wall of memorable lines from Claude Code sessions.
+A personal lessons-learned archive for Claude Code. Capture the gotchas, dead-ends, and corrected assumptions Claude makes during a session, then recall the relevant ones via semantic search at the start of a future session — so the same mistake isn't repeated by a stateless model with no memory of the prior conversation.
 
 ## Stack
 
 - Next.js 16 (App Router) on Vercel
-- MongoDB Atlas (sessions, users, posts, follows, CLI device codes)
+- MongoDB Atlas — `lessons` collection with a vector search index over a 512-dim Voyage embedding
 - Auth.js v5 with GitHub OAuth + MongoDB adapter
-- Quote images rendered on the fly via `next/og` (Satori) — nothing stored as bytes
-- Companion npm package `claudewall` (in `cli/`) registers a `/wall` slash command for Claude Code
+- Companion npm package `claudewall` (in `cli/`) registers `/lesson` and `/recall` slash commands for Claude Code
 
 ## OAuth
 
-There is **one** GitHub OAuth App, callback `https://claudewall.com/api/auth/callback/github`. GitHub OAuth apps allow only one callback URL, so local dev and Vercel preview deployments cannot complete a real GitHub sign-in against it — auth flows are tested on the production deploy.
+There is **one** GitHub OAuth App, callback `https://claudewall.com/api/auth/callback/github`. GitHub OAuth apps allow only one callback URL, so local dev and Vercel preview deployments can't complete a real GitHub sign-in against it — auth flows are tested on the production deploy.
 
 ## Local development
 
-1. Copy env: `cp .env.local.example .env.local` (or use the pre-filled `.env.local` on this machine).
+1. `cp .env.local.example .env.local` (or use the pre-filled `.env.local` on this machine)
 2. Install + run:
    ```sh
    npm install
    npm run dev
    ```
-3. Iterate on UI, feed/profile rendering, image rendering, etc. To test sign-in, follow, and `/api/submit` end-to-end, deploy to Vercel and test on `claudewall.com`.
+3. Iterate on UI, lesson rendering, recall page, etc. Sign-in and full `/api/l/*` flows are easiest to test on the deployed site.
 
 ## Deploying to Vercel
 
-Set these environment variables in the Vercel project:
+Required env vars:
 
 - `MONGODB_URI`
-- `MONGODB_DB` (optional, defaults to `claudewall`)
-- `AUTH_SECRET` (generate: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`)
-- `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` (the single OAuth app, callback `https://claudewall.com/api/auth/callback/github`)
+- `MONGODB_DB` (defaults to `claudewall`)
+- `AUTH_SECRET` (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`)
+- `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` (callback `https://claudewall.com/api/auth/callback/github`)
 - `AUTH_URL=https://claudewall.com`
 - `NEXTAUTH_URL=https://claudewall.com`
+- `VOYAGE_API_KEY` (Voyage AI — embeddings for `/recall`)
 
 `cli/` is excluded from the Vercel deploy via `.vercelignore`.
 
-## CLI / `/wall` slash command
+## Atlas vector search index
 
-The `cli/` directory is a separate npm package, published as `claudewall`. End users run:
+In Atlas → Search → Vector Search Indexes, create `lessons_vector_index` on the `lessons` collection of the `claudewall` database with:
+
+```json
+{
+  "fields": [
+    {
+      "type": "vector",
+      "path": "embedding",
+      "numDimensions": 512,
+      "similarity": "cosine"
+    },
+    {
+      "type": "filter",
+      "path": "authorId"
+    }
+  ]
+}
+```
+
+The `authorId` filter scopes recall queries to the requesting user's own lessons.
+
+## CLI / slash commands
+
+Users authorize once with:
 
 ```sh
 npx claudewall init
 ```
 
-Which:
+That writes a bearer token to `~/.claudewall/config.json` and installs:
 
-1. Hits `/api/cli/start` to get a device code, opens the browser to `/cli/approve?code=…`.
-2. User signs in with GitHub and confirms — `/api/cli/poll` returns the minted bearer token.
-3. Token is saved to `~/.claudewall/config.json` (mode `0600`).
-4. `wall.md` is copied to `~/.claude/commands/wall.md`, registering the `/wall` slash command.
+- `~/.claude/commands/lesson.md` — `/lesson` slash command (capture)
+- `~/.claude/commands/recall.md` — `/recall` slash command (retrieve)
 
-Then in any Claude Code session, `/wall` reads the active conversation, picks up to 10 standalone, context-free aphorisms from the assistant's recent turns, asks the user which to publish, and `POST`s each to `/api/submit` using the saved bearer token.
+In any Claude Code session:
+
+- `/lesson` — Claude proposes structured lessons from the recent transcript, you pick which to keep
+- `/recall <free text>` — pulls up to 3 of your prior lessons most relevant to a situation you're in now
 
 ## Routes
 
-| Path                       | Purpose                                        |
-| -------------------------- | ---------------------------------------------- |
-| `/`                        | Masonry feed                                   |
-| `/p/[postId]`              | Single quote                                   |
-| `/u/[handle]`              | User profile + follow button                   |
-| `/cli/approve`             | Browser approval page for the CLI device flow  |
-| `/api/og/[postId]`         | Quote image (rendered on demand)               |
-| `/api/submit`              | `POST` — bearer-token submit (used by `/wall`) |
-| `/api/follow`              | `POST` — follow / unfollow                     |
-| `/api/cli/start`           | `POST` — begin device flow                     |
-| `/api/cli/poll`            | `POST` — poll for approval                     |
-| `/api/auth/[...nextauth]`  | Auth.js routes                                 |
+| Path                       | Purpose                                            |
+| -------------------------- | -------------------------------------------------- |
+| `/`                        | Redirect to `/l`                                   |
+| `/l`                       | Your lessons (signed-in only)                      |
+| `/l/[id]`                  | Single lesson detail                               |
+| `/l/recall`                | Browser recall UI (semantic search over your archive) |
+| `/u/[handle]`              | Profile (lesson count; full list only when viewing your own) |
+| `/cli/approve`             | Browser approval page for the CLI device flow      |
+| `/api/l/submit`            | `POST` — bearer-auth submit (used by `/lesson`)    |
+| `/api/l/recall`            | `GET` — bearer or session auth, returns up to 3 lessons |
+| `/api/cli/{start,poll}`    | CLI device-flow auth                               |
+| `/api/auth/[...nextauth]`  | Auth.js                                            |
 
 ## Mongo collections
 
 - `users`, `accounts`, `sessions`, `verification_tokens` — managed by Auth.js MongoDB adapter
-- `posts` — `{ authorId, authorHandle, authorName, authorImage, quote, model?, rationale?, createdAt }`
-- `follows` — `{ followerId, followeeId, createdAt }` (unique on `(followerId, followeeId)`)
-- `cli_codes` — short-lived device-flow records
-- `cli_tokens` — long-lived bearer tokens used by `/api/submit`
+- `lessons` — `{ authorId, title, trigger, mistake, correction, tags[], weight, embedding[], createdAt, ... }`
+- `cli_codes`, `cli_tokens` — CLI device-flow auth state

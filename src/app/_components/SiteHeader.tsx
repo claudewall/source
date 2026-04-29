@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { auth, signIn, signOut } from '@/lib/auth'
-import HeaderTabs from './HeaderTabs'
 
 async function signInGitHub() {
   'use server'
@@ -9,7 +8,7 @@ async function signInGitHub() {
 
 async function signOutAction() {
   'use server'
-  await signOut({ redirectTo: '/' })
+  await signOut({ redirectTo: '/l' })
 }
 
 async function getStars(): Promise<number | null> {
@@ -23,7 +22,9 @@ async function getStars(): Promise<number | null> {
     )
     if (!res.ok) return null
     const data = (await res.json()) as { stargazers_count?: number }
-    return typeof data.stargazers_count === 'number' ? data.stargazers_count : null
+    return typeof data.stargazers_count === 'number'
+      ? data.stargazers_count
+      : null
   } catch {
     return null
   }
@@ -61,6 +62,24 @@ function SignOutIcon({ className }: { className?: string }) {
   )
 }
 
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.35-4.35" />
+    </svg>
+  )
+}
+
 export default async function SiteHeader() {
   const session = await auth()
   const user = session?.user as
@@ -70,23 +89,29 @@ export default async function SiteHeader() {
 
   return (
     <header className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 border-b border-neutral-200/70 bg-[#faf6ec]">
-      <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-        <Link href="/" className="flex items-center gap-2 min-w-0">
-          <img
-            src="/logo.png"
-            alt="claudewall"
-            width={32}
-            height={32}
-            className="w-8 h-8 rounded-md flex-none"
-          />
-          <span className="hidden sm:inline font-serif text-2xl tracking-tight">
-            claudewall
-          </span>
-        </Link>
-        <HeaderTabs />
-      </div>
+      <Link href="/l" className="flex items-center gap-2 min-w-0">
+        <img
+          src="/logo.png"
+          alt="claudewall"
+          width={32}
+          height={32}
+          className="w-8 h-8 rounded-md flex-none"
+        />
+        <span className="hidden sm:inline font-serif text-2xl tracking-tight">
+          claudewall
+        </span>
+      </Link>
 
       <nav className="flex items-center gap-2 sm:gap-3 text-sm flex-none">
+        <Link
+          href="/l/recall"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
+          aria-label="Recall a lesson"
+          title="Recall"
+        >
+          <SearchIcon className="w-4 h-4" />
+          <span className="hidden sm:inline">Recall</span>
+        </Link>
         <a
           href="https://github.com/claudewall"
           target="_blank"

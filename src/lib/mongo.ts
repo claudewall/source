@@ -37,15 +37,8 @@ export async function ensureIndexes(): Promise<void> {
   indexesPromise = (async () => {
     const d = await db()
     await Promise.all([
-      d
-        .collection('likes')
-        .createIndex({ userId: 1, postId: 1 }, { unique: true }),
-      d.collection('likes').createIndex({ postId: 1 }),
-      d.collection('posts').createIndex({ createdAt: -1 }),
-      d
-        .collection('follows')
-        .createIndex({ followerId: 1, followeeId: 1 }, { unique: true }),
-      d.collection('follows').createIndex({ followeeId: 1 }),
+      d.collection('lessons').createIndex({ authorId: 1, createdAt: -1 }),
+      d.collection('lessons').createIndex({ tags: 1 }),
     ])
   })().catch((err) => {
     indexesPromise = null

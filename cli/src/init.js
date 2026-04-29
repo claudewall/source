@@ -22,7 +22,7 @@ function openBrowser(url) {
       spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref()
     }
   } catch {
-    // Browser open is best-effort.
+    // best-effort
   }
 }
 
@@ -66,11 +66,7 @@ async function main() {
       fs.writeFileSync(
         cfgPath,
         JSON.stringify(
-          {
-            api: API,
-            handle: poll.data.handle,
-            token: poll.data.token,
-          },
+          { api: API, handle: poll.data.handle, token: poll.data.token },
           null,
           2,
         ),
@@ -81,11 +77,24 @@ async function main() {
       const cmdsDir = path.join(os.homedir(), '.claude', 'commands')
       fs.mkdirSync(cmdsDir, { recursive: true })
 
+      // Drop slash commands from older claudewall versions that no
+      // longer correspond to live endpoints.
+      const obsolete = ['wall.md', 'wall-auto.md', 'tip.md', 'tip-auto.md']
+      for (const name of obsolete) {
+        const p = path.join(cmdsDir, name)
+        if (fs.existsSync(p)) {
+          try {
+            fs.unlinkSync(p)
+            console.log(`  removed obsolete /${name.replace('.md', '')}`)
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       const slashCommands = [
-        { src: 'wall.md', label: '/wall' },
-        { src: 'wall-auto.md', label: '/wall-auto' },
-        { src: 'tip.md', label: '/tip' },
-        { src: 'tip-auto.md', label: '/tip-auto' },
+        { src: 'lesson.md', label: '/lesson' },
+        { src: 'recall.md', label: '/recall' },
       ]
       for (const cmd of slashCommands) {
         const srcPath = path.join(__dirname, cmd.src)
@@ -95,8 +104,7 @@ async function main() {
       }
 
       console.log('')
-      console.log('All set. Run /wall or /tip in any Claude Code session.')
-      console.log('Hands-off variants: /wall-auto, /tip-auto (use with /loop).')
+      console.log('All set. Run /lesson to capture and /recall to retrieve.')
       return
     }
   }

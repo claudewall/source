@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/mongo'
 
-export async function deletePost(postId: string) {
+export async function deleteLesson(lessonId: string) {
   const session = await auth()
   const sessionUser = session?.user as
     | { id?: string; handle?: string }
@@ -16,7 +16,7 @@ export async function deletePost(postId: string) {
 
   let _id: ObjectId
   try {
-    _id = new ObjectId(postId)
+    _id = new ObjectId(lessonId)
   } catch {
     throw new Error('invalid id')
   }
@@ -24,16 +24,16 @@ export async function deletePost(postId: string) {
   const authorId = new ObjectId(sessionUser.id)
 
   const result = await (await db())
-    .collection('posts')
+    .collection('lessons')
     .deleteOne({ _id, authorId })
 
   if (result.deletedCount === 0) {
     throw new Error('not found or not yours')
   }
 
-  revalidatePath('/p')
+  revalidatePath('/l')
+  revalidatePath(`/l/${lessonId}`)
   if (sessionUser.handle) {
     revalidatePath(`/u/${sessionUser.handle}`)
   }
-  revalidatePath(`/p/${postId}`)
 }

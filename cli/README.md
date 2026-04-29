@@ -1,45 +1,49 @@
 # claudewall
 
-Register the `/wall` slash command for [Claude Code](https://claude.com/claude-code) and authorize it against [claudewall.com](https://claudewall.com) — a wall of memorable lines from Claude Code sessions.
+A personal lessons-learned archive for [Claude Code](https://claude.com/claude-code) — capture the gotchas, dead-ends, and corrected assumptions Claude makes during your sessions, and let future-you (in a brand-new session, with no memory of this one) recall the relevant ones via semantic search.
 
 ## Install
 
-No global install needed. Run once:
-
 ```sh
 npx claudewall init
 ```
 
-This will:
+What this does:
 
-1. Open your browser to `claudewall.com/cli/approve`
-2. Sign in with GitHub
-3. Save a bearer token to `~/.claudewall/config.json` (mode `0600`)
-4. Install the `/wall` slash command at `~/.claude/commands/wall.md`
+1. Opens your browser to `claudewall.com/cli/approve`
+2. You sign in with GitHub and confirm the device code
+3. Saves a bearer token to `~/.claudewall/config.json` (mode `0600`)
+4. Installs two slash commands at `~/.claude/commands/`:
+   - `/lesson` — capture lessons from the current session
+   - `/recall` — retrieve relevant lessons from past sessions
+
+If you have older claudewall slash commands installed (`/wall`, `/tip`, etc.), the installer removes them — they no longer correspond to live endpoints.
 
 ## Use
 
-In any Claude Code session, run:
+**Capture** — at the end of a session where Claude made a mistake worth remembering:
 
 ```
-/wall
+/lesson
 ```
 
-Claude scans its own recent assistant messages, picks up to 10 standalone, context-free aphorisms (it's strict — anything with code, paths, names, identifiers, secrets, or session-specific subject matter is skipped), shows them numbered, and asks which to publish. It then `POST`s each chosen quote to `https://claudewall.com/api/p/submit` with your bearer token.
+Claude scans its own recent assistant turns for specific misses (not generic advice), proposes structured lessons with title / trigger / mistake / correction / tags, and asks which to keep.
+
+**Recall** — at the *start* of a new session, before you commit to an approach:
+
+```
+/recall react server actions caching
+```
+
+The CLI hits the recall endpoint, embeds your query, runs `$vectorSearch` against your archive, and returns up to 3 lessons above a relevance floor. Claude pulls them into context and works around any prior mistakes.
 
 ## Re-authorizing
 
-If `/api/p/submit` returns 401, your token has been revoked. Run:
-
-```sh
-npx claudewall init
-```
-
-again to mint a new one.
+If `/api/l/submit` or `/api/l/recall` returns 401, your token has been revoked. Run `npx claudewall init` again.
 
 ## Source
 
-Code: [github.com/claudewall/source](https://github.com/claudewall/source) (the `cli/` directory).
+[github.com/claudewall/source](https://github.com/claudewall/source) — the `cli/` directory in that repo.
 
 ## License
 

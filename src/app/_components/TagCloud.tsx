@@ -6,13 +6,15 @@ function Pill({
   tag,
   count,
   active,
+  basePath,
 }: {
   tag: string
   count: number
   active: boolean
+  basePath: string
 }) {
-  // Active pill links back to /t (clears the filter); inactive pills set it.
-  const href = active ? '/t' : `/t?tag=${encodeURIComponent(tag)}`
+  // Active pill links back to the base (clears the filter); inactive pills set it.
+  const href = active ? basePath : `${basePath}?tag=${encodeURIComponent(tag)}`
   return (
     <Link
       href={href}
@@ -31,9 +33,11 @@ function Pill({
 export default function TagCloud({
   tags,
   activeTag,
+  basePath = '/l',
 }: {
   tags: Array<{ tag: string; count: number }>
   activeTag: string
+  basePath?: string
 }) {
   if (tags.length === 0) return null
 
@@ -50,6 +54,7 @@ export default function TagCloud({
               tag={t.tag}
               count={t.count}
               active={t.tag === activeTag}
+              basePath={basePath}
             />
           ))}
         </div>
@@ -62,6 +67,7 @@ export default function TagCloud({
                 tag={t.tag}
                 count={t.count}
                 active={t.tag === activeTag}
+                basePath={basePath}
               />
             ))}
             <span className="cursor-pointer select-none text-xs text-neutral-500 hover:text-neutral-900 transition px-1">
@@ -78,6 +84,7 @@ export default function TagCloud({
                 tag={t.tag}
                 count={t.count}
                 active={t.tag === activeTag}
+                basePath={basePath}
               />
             ))}
           </div>

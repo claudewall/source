@@ -7,18 +7,22 @@ if (!cmd || cmd === 'init') {
   require('../src/init.js')
 } else if (cmd === 'publish') {
   require('../src/publish.js')
+} else if (cmd === 'recall') {
+  require('../src/recall.js')
 } else if (cmd === '-h' || cmd === '--help' || cmd === 'help') {
   console.log('Usage:')
   console.log('  npx claudewall init')
   console.log('      Authorize this device against claudewall.com and')
-  console.log('      install the /wall and /tip slash commands for')
+  console.log('      install the /lesson and /recall slash commands for')
   console.log('      Claude Code.')
   console.log('')
-  console.log('  npx claudewall publish <quote|tip> <path-to-body.json>')
-  console.log('      Internal helper invoked by the /wall and /tip')
-  console.log('      slash commands. Reads the bearer token from')
-  console.log('      ~/.claudewall/config.json at runtime and POSTs the')
-  console.log('      body file to claudewall.com.')
+  console.log('  npx claudewall publish lesson [body.json]')
+  console.log('      POST a structured lesson to claudewall.com/l. Reads')
+  console.log('      JSON body from a file or stdin (heredoc-friendly).')
+  console.log('')
+  console.log('  npx claudewall recall "<query>"')
+  console.log("      Pull up to 3 of your past lessons most relevant to a")
+  console.log('      free-text situation. Output is Markdown to stdout.')
   process.exit(0)
 } else {
   console.error(`Unknown command: ${cmd}`)

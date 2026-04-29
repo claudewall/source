@@ -1,12 +1,11 @@
 import type { NextRequest } from 'next/server'
-import { db } from '@/lib/mongo'
+import { db, ensureIndexes } from '@/lib/mongo'
 import { embedText } from '@/lib/embedding'
 
-const MAX_TITLE = 120
-const MAX_BODY = 1000
-const MAX_CODE = 1500
-const MAX_LANG = 30
-const MAX_RATIONALE = 200
+const MAX_TITLE = 140
+const MAX_TRIGGER = 500
+const MAX_MISTAKE = 1000
+const MAX_CORRECTION = 1000
 const MAX_TAGS = 5
 const MAX_TAG_LEN = 30
 const MIN_TAG_LEN = 2
@@ -22,16 +21,17 @@ export async function POST(req: NextRequest) {
   const d = await db()
   const tokenRow = await d.collection('cli_tokens').findOne({ token })
   if (!tokenRow) return Response.json({ error: 'unauthorized' }, { status: 401 })
+
   const user = await d.collection('users').findOne({ _id: tokenRow.userId })
   if (!user) return Response.json({ error: 'unauthorized' }, { status: 401 })
 
   let body: {
     title?: unknown
-    body?: unknown
-    code?: unknown
-    lang?: unknown
-    rationale?: unknown
+    trigger?: unknown
+    mistake?: unknown
+    correction?: unknown
     tags?: unknown
+    weight?: unknown
     model?: unknown
   }
   try {
@@ -48,24 +48,29 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const tipBody = String(body.body ?? '').trim()
-  if (!tipBody || tipBody.length > MAX_BODY) {
+  const trigger = String(body.trigger ?? '').trim()
+  if (!trigger || trigger.length > MAX_TRIGGER) {
     return Response.json(
-      { error: `body must be 1..${MAX_BODY} chars` },
+      { error: `trigger must be 1..${MAX_TRIGGER} chars` },
       { status: 400 },
     )
   }
 
-  const codeRaw = body.code ? String(body.code) : ''
-  const code = codeRaw.length > 0 ? codeRaw.slice(0, MAX_CODE) : undefined
+  const mistake = String(body.mistake ?? '').trim()
+  if (!mistake || mistake.length > MAX_MISTAKE) {
+    return Response.json(
+      { error: `mistake must be 1..${MAX_MISTAKE} chars` },
+      { status: 400 },
+    )
+  }
 
-  const langRaw = body.lang ? String(body.lang).toLowerCase().trim() : ''
-  const lang =
-    langRaw.length > 0 && langRaw.length <= MAX_LANG ? langRaw : undefined
-
-  const rationaleRaw = body.rationale ? String(body.rationale).trim() : ''
-  const rationale =
-    rationaleRaw.length > 0 ? rationaleRaw.slice(0, MAX_RATIONALE) : undefined
+  const correction = String(body.correction ?? '').trim()
+  if (!correction || correction.length > MAX_CORRECTION) {
+    return Response.json(
+      { error: `correction must be 1..${MAX_CORRECTION} chars` },
+      { status: 400 },
+    )
+  }
 
   let tags: string[] = []
   if (Array.isArray(body.tags)) {
@@ -84,40 +89,38 @@ export async function POST(req: NextRequest) {
       }
     }
   }
-  if (tags.length === 0) {
-    return Response.json(
-      { error: 'at least one tag required' },
-      { status: 400 },
-    )
-  }
 
-  // Best-effort embedding for vector search. Fails open — a Voyage outage
-  // or missing key just means this tip isn't searchable until backfilled.
-  // Corpus deliberately excludes `code` because variable names and syntax
-  // tokens muddle the semantic direction; rationale + body + tags carry the
-  // signal a query is most likely to match.
-  const corpus = [rationale, title, tipBody, tags.join(' ')]
+  const weight = Math.max(
+    1,
+    Math.min(5, Number((body as { weight?: number }).weight) || 3),
+  )
+
+  await ensureIndexes()
+
+  // Embed the *trigger + mistake + correction* — that's the situation
+  // future-Claude needs to match. Title is editorial; not in the corpus.
+  const corpus = [trigger, mistake, correction, tags.join(' ')]
     .filter(Boolean)
     .join('\n')
   const embedding = await embedText(corpus)
 
-  const tip = {
+  const lesson = {
     authorId: user._id,
     authorHandle: (user as { handle?: string }).handle,
     authorName: user.name,
     authorImage: user.image,
     title,
-    body: tipBody,
-    code,
-    lang,
-    rationale,
+    trigger,
+    mistake,
+    correction,
     tags,
+    weight,
     model: body.model ? String(body.model).slice(0, 80) : undefined,
-    likeCount: 0,
     embedding,
     createdAt: new Date(),
   }
-  const r = await d.collection('tips').insertOne(tip)
+
+  const r = await d.collection('lessons').insertOne(lesson)
 
   await d
     .collection('cli_tokens')
@@ -125,8 +128,5 @@ export async function POST(req: NextRequest) {
 
   const id = r.insertedId.toString()
   const origin = process.env.AUTH_URL || process.env.NEXTAUTH_URL || ''
-  return Response.json({
-    id,
-    url: `${origin}/t/${id}`,
-  })
+  return Response.json({ id, url: `${origin}/l/${id}` })
 }
