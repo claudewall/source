@@ -10,15 +10,21 @@ export async function GET(
 ) {
   const { postId } = await params
 
+  // Short cache on 404s so a transient miss (e.g. just-deleted post)
+  // doesn't pin a stale answer at the edge for long.
+  const NOT_FOUND_HEADERS = {
+    'Cache-Control': 'public, max-age=60, s-maxage=60',
+  }
+
   let _id: ObjectId
   try {
     _id = new ObjectId(postId)
   } catch {
-    return new Response('not found', { status: 404 })
+    return new Response('not found', { status: 404, headers: NOT_FOUND_HEADERS })
   }
 
   const post = await (await db()).collection('posts').findOne({ _id })
-  if (!post) return new Response('not found', { status: 404 })
+  if (!post) return new Response('not found', { status: 404, headers: NOT_FOUND_HEADERS })
 
   const quote = String(post.quote ?? '')
   const length = quote.length
@@ -62,6 +68,17 @@ export async function GET(
         </div>
       </div>
     ),
-    { width: 1024, height: 540 },
+    {
+      width: 1024,
+      height: 540,
+      headers: {
+        // The rendered PNG is deterministic from the post — once a quote
+        // is published the bytes don't change. Cache aggressively at the
+        // CDN; let the browser hold a day; serve stale-while-revalidate
+        // for a week to absorb any post-publish edits.
+        'Cache-Control':
+          'public, max-age=86400, s-maxage=2592000, stale-while-revalidate=604800',
+      },
+    },
   )
 }
