@@ -1,8 +1,16 @@
-export default function InstallBanner() {
+export default function InstallBanner({
+  command = '/wall',
+  question = 'Want to add to the wall?',
+  step3 = 'in a fresh session and pick the lines you want on the wall.',
+}: {
+  command?: string
+  question?: string
+  step3?: string
+} = {}) {
   return (
     <details className="sticky top-0 z-30 bg-[#faf6ec]/95 backdrop-blur border-b border-neutral-200/70 group">
       <summary className="cursor-pointer list-none px-4 sm:px-6 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100/60 flex items-center justify-between gap-3 select-none">
-        <span className="truncate">Want to add to the wall?</span>
+        <span className="truncate">{question}</span>
         <span className="text-xs text-neutral-500 flex-none flex items-center gap-1.5">
           <span className="hidden sm:inline">Install steps</span>
           <svg
@@ -49,9 +57,9 @@ export default function InstallBanner() {
             <span>
               Run{' '}
               <code className="bg-neutral-100 px-1.5 py-0.5 rounded font-mono text-xs">
-                /wall
+                {command}
               </code>{' '}
-              in a fresh session and pick the lines you want on the wall.
+              {step3}
             </span>
           </li>
         </ol>

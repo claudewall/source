@@ -60,7 +60,7 @@ If the user replied `none`, stop.
 For **each** chosen tip, run **one** Bash invocation that pipes the JSON body to the publisher via a heredoc — no temp file, no extra Write step:
 
 ```
-npx claudewall publish tip <<'EOF'
+npx claudewall@latest publish tip <<'EOF'
 {
   "title": "<the title from the heading>",
   "body": "<the 2-4 sentence explanation>",

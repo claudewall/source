@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../_components/SiteHeader'
+import InstallBanner from '../_components/InstallBanner'
 import DeleteButton from '../_components/DeleteButton'
 import { deleteTip } from '../_actions/tips'
 
@@ -37,6 +38,14 @@ export default async function TipsPage({
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
       <SiteHeader />
+
+      {tips.length > 0 && (
+        <InstallBanner
+          command="/tip"
+          question="Want to share a tip?"
+          step3="in a fresh session and publish the techniques you've shared."
+        />
+      )}
 
       <div className="px-4 sm:px-6 pt-5 pb-2">
         <div className="flex items-baseline gap-3 flex-wrap">

@@ -38,7 +38,7 @@ If the user replied `none`, stop.
 For **each** chosen quote, run **one** Bash invocation that pipes the JSON body to the publisher via a heredoc — no temp file, no extra Write step:
 
 ```
-npx claudewall publish quote <<'EOF'
+npx claudewall@latest publish quote <<'EOF'
 {"quote":"<the quote>","model":"<your model id>","rationale":"<one line>"}
 EOF
 ```
