@@ -25,10 +25,7 @@ export default function HeaderTabs() {
   const pathname = usePathname() ?? '/'
   // Search lives in tip-territory (it queries the tips index), so /search
   // counts as Tips for active-tab purposes.
-  const onTips =
-    pathname === '/t' ||
-    pathname.startsWith('/t/') ||
-    pathname.startsWith('/search')
+  const onTips = pathname === '/t' || pathname.startsWith('/t/')
 
   const baseTab =
     'py-1.5 border-b-2 text-sm transition whitespace-nowrap'
@@ -52,7 +49,7 @@ export default function HeaderTabs() {
       </Link>
       {onTips && (
         <Link
-          href="/search"
+          href="/t/search"
           className="text-neutral-500 hover:text-neutral-900 transition py-1.5"
           aria-label="Search tips"
           title="Search tips"

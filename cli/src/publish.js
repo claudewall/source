@@ -5,8 +5,8 @@ const path = require('node:path')
 const os = require('node:os')
 
 const ENDPOINTS = {
-  quote: '/api/submit',
-  tip: '/api/tips/submit',
+  quote: '/api/p/submit',
+  tip: '/api/t/submit',
 }
 
 function readBody(bodyPath) {

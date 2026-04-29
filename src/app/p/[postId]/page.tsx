@@ -56,7 +56,7 @@ export default async function Page({
       <div className="max-w-3xl mx-auto p-6">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <img
-            src={`/api/og/${postId}`}
+            src={`/api/p/og/${postId}`}
             alt={quote}
             className="w-full block"
           />

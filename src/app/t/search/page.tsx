@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
-import SiteHeader from '../_components/SiteHeader'
+import SiteHeader from '../../_components/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +25,7 @@ async function runSearch(q: string): Promise<SearchResponse> {
   const h = await headers()
   const host = h.get('host') ?? 'localhost:3000'
   const proto = h.get('x-forwarded-proto') ?? 'http'
-  const url = `${proto}://${host}/api/search?q=${encodeURIComponent(q)}`
+  const url = `${proto}://${host}/api/t/search?q=${encodeURIComponent(q)}`
   try {
     const res = await fetch(url, { cache: 'no-store' })
     return (await res.json()) as SearchResponse
@@ -51,7 +51,7 @@ export default async function SearchPage({
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <form
-          action="/search"
+          action="/t/search"
           method="get"
           className="flex items-center gap-2 mb-6"
         >

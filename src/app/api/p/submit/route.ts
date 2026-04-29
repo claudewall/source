@@ -55,6 +55,6 @@ export async function POST(req: NextRequest) {
   return Response.json({
     id,
     url: `${origin}/p/${id}`,
-    image: `${origin}/api/og/${id}`,
+    image: `${origin}/api/p/og/${id}`,
   })
 }

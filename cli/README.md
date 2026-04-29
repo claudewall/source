@@ -25,11 +25,11 @@ In any Claude Code session, run:
 /wall
 ```
 
-Claude scans its own recent assistant messages, picks up to 10 standalone, context-free aphorisms (it's strict — anything with code, paths, names, identifiers, secrets, or session-specific subject matter is skipped), shows them numbered, and asks which to publish. It then `POST`s each chosen quote to `https://claudewall.com/api/submit` with your bearer token.
+Claude scans its own recent assistant messages, picks up to 10 standalone, context-free aphorisms (it's strict — anything with code, paths, names, identifiers, secrets, or session-specific subject matter is skipped), shows them numbered, and asks which to publish. It then `POST`s each chosen quote to `https://claudewall.com/api/p/submit` with your bearer token.
 
 ## Re-authorizing
 
-If `/api/submit` returns 401, your token has been revoked. Run:
+If `/api/p/submit` returns 401, your token has been revoked. Run:
 
 ```sh
 npx claudewall init

@@ -38,7 +38,7 @@ export default function LikeButton({
 
     startTransition(async () => {
       try {
-        const res = await fetch('/api/like', {
+        const res = await fetch('/api/p/like', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ postId }),

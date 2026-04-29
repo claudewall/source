@@ -117,7 +117,7 @@ export default async function Page({
                   )}
                   <Link href={`/p/${id}`}>
                     <img
-                      src={`/api/og/${id}`}
+                      src={`/api/p/og/${id}`}
                       alt={quote}
                       className="w-full block"
                       loading="lazy"
