@@ -25,6 +25,46 @@ function readBody(bodyPath) {
   })
 }
 
+// Best-effort detection of "what project am I in?" so /lesson captures
+// don't all collapse to anonymous. Walks up from the cwd looking for a
+// git repo and pulls "owner/repo" out of the remote URL; falls back to
+// the cwd's directory basename when there's no repo. Doesn't look at
+// package.json — many sessions aren't in a Node project at all, and a
+// stale "name" field would mislead more than help.
+//
+// Caller can override by including a "project" field in the JSON body.
+function detectProject() {
+  const cwd = process.cwd()
+  let dir = cwd
+  while (true) {
+    try {
+      const gitConfigPath = path.join(dir, '.git', 'config')
+      if (fs.existsSync(gitConfigPath)) {
+        try {
+          const text = fs.readFileSync(gitConfigPath, 'utf8')
+          const m = text.match(/^\s*url\s*=\s*(\S+?)\s*$/m)
+          if (m) {
+            const url = m[1].replace(/\.git$/, '').replace(/\/$/, '')
+            const parts = url.split(/[/:]/).filter(Boolean)
+            if (parts.length >= 2) {
+              return parts.slice(-2).join('/').slice(0, 100)
+            }
+          }
+        } catch {
+          // fall through to repo-dir basename
+        }
+        return path.basename(dir).slice(0, 100)
+      }
+    } catch {
+      // ignore stat errors and keep walking
+    }
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return path.basename(cwd).slice(0, 100)
+}
+
 async function main() {
   const kind = process.argv[3]
   const bodyPath = process.argv[4]
@@ -52,10 +92,27 @@ async function main() {
     process.exit(1)
   }
 
-  const body = await readBody(bodyPath)
-  if (!body || body.length === 0) {
+  const bodyBuf = await readBody(bodyPath)
+  if (!bodyBuf || bodyBuf.length === 0) {
     console.error('Empty body. Pipe JSON to stdin or pass a body file.')
     process.exit(1)
+  }
+
+  // Parse the JSON so we can fold in an auto-detected project field
+  // if the caller didn't set one.
+  let payload
+  try {
+    payload = JSON.parse(bodyBuf.toString('utf8'))
+  } catch (err) {
+    console.error(`Body is not valid JSON: ${err.message}`)
+    process.exit(1)
+  }
+
+  if (
+    kind === 'lesson' &&
+    (typeof payload.project !== 'string' || payload.project.trim().length === 0)
+  ) {
+    payload.project = detectProject()
   }
 
   const api = cfg.api || 'https://claudewall.com'
@@ -69,7 +126,7 @@ async function main() {
         Authorization: 'Bearer ' + cfg.token,
         'Content-Type': 'application/json',
       },
-      body,
+      body: JSON.stringify(payload),
     })
   } catch (err) {
     console.error(`Network error: ${err.message}`)

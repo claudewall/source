@@ -6,6 +6,7 @@ const MAX_TITLE = 140
 const MAX_TRIGGER = 500
 const MAX_MISTAKE = 1000
 const MAX_CORRECTION = 1000
+const MAX_PROJECT = 100
 const MAX_TAGS = 5
 const MAX_TAG_LEN = 30
 const MIN_TAG_LEN = 2
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     trigger?: unknown
     mistake?: unknown
     correction?: unknown
+    project?: unknown
     tags?: unknown
     weight?: unknown
     model?: unknown
@@ -95,6 +97,10 @@ export async function POST(req: NextRequest) {
     Math.min(5, Number((body as { weight?: number }).weight) || 3),
   )
 
+  const projectRaw = body.project ? String(body.project).trim() : ''
+  const project =
+    projectRaw.length > 0 ? projectRaw.slice(0, MAX_PROJECT) : undefined
+
   await ensureIndexes()
 
   // Embed the *trigger + mistake + correction* — that's the situation
@@ -113,6 +119,7 @@ export async function POST(req: NextRequest) {
     trigger,
     mistake,
     correction,
+    project,
     tags,
     weight,
     model: body.model ? String(body.model).slice(0, 80) : undefined,

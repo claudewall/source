@@ -44,6 +44,11 @@ export default async function LessonDetailPage({
   const tags = ((lesson as { tags?: unknown }).tags ?? []) as string[]
   const weight = Number((lesson as { weight?: number }).weight ?? 3)
   const model = (lesson as { model?: string }).model
+  const project = (lesson as { project?: string }).project
+  const authorHandle = String(
+    (lesson as { authorHandle?: string }).authorHandle ?? '',
+  )
+  const authorImage = (lesson as { authorImage?: string | null }).authorImage
 
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
@@ -109,6 +114,22 @@ export default async function LessonDetailPage({
             <Link href="/l" className="text-sm text-neutral-500 hover:underline">
               ← all lessons
             </Link>
+            <div className="flex items-center gap-1.5 text-xs text-neutral-500 min-w-0">
+              {authorImage && (
+                <img
+                  src={authorImage}
+                  alt=""
+                  className="w-4 h-4 rounded-full flex-none"
+                />
+              )}
+              <span className="truncate">@{authorHandle}</span>
+              {project && (
+                <>
+                  <span className="text-neutral-300">·</span>
+                  <span className="font-mono truncate">{project}</span>
+                </>
+              )}
+            </div>
             <div className="ml-auto flex items-center gap-3 text-xs text-neutral-500">
               {model && <span className="font-mono">{model}</span>}
               <DeleteButton

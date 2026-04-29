@@ -163,10 +163,16 @@ export default async function LessonsPage({
               (l as { correction?: string }).correction ?? '',
             )
             const weight = Number((l as { weight?: number }).weight ?? 3)
+            const authorHandle = String(
+              (l as { authorHandle?: string }).authorHandle ?? '',
+            )
+            const authorImage = (l as { authorImage?: string | null })
+              .authorImage
+            const project = (l as { project?: string }).project
             return (
               <div
                 key={id}
-                className="relative mb-4 break-inside-avoid bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden"
+                className="group relative mb-4 break-inside-avoid bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden"
               >
                 <DeleteButton
                   id={id}
@@ -204,6 +210,22 @@ export default async function LessonsPage({
                       ))}
                     </div>
                   )}
+                  <div className="pt-1 flex items-center gap-1.5 text-xs text-neutral-500 min-w-0">
+                    {authorImage && (
+                      <img
+                        src={authorImage}
+                        alt=""
+                        className="w-4 h-4 rounded-full flex-none"
+                      />
+                    )}
+                    <span className="truncate">@{authorHandle}</span>
+                    {project && (
+                      <>
+                        <span className="text-neutral-300">·</span>
+                        <span className="font-mono truncate">{project}</span>
+                      </>
+                    )}
+                  </div>
                 </Link>
               </div>
             )
