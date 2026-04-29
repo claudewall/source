@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ObjectId } from 'mongodb'
 import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
+import SiteHeader from '../../_components/SiteHeader'
 import FollowButton from './FollowButton'
 
 export const dynamic = 'force-dynamic'
@@ -46,18 +47,7 @@ export default async function Page({
 
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
-      <header className="px-6 py-4 border-b border-neutral-200/70">
-        <Link href="/" className="flex items-center gap-2.5">
-          <img
-            src="/logo.png"
-            alt=""
-            width={32}
-            height={32}
-            className="w-8 h-8 rounded-md"
-          />
-          <span className="font-serif text-2xl tracking-tight">claudewall</span>
-        </Link>
-      </header>
+      <SiteHeader />
       <div className="max-w-5xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
           {user!.image && (

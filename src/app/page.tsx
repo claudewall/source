@@ -1,23 +1,10 @@
 import Link from 'next/link'
 import { db } from '@/lib/mongo'
-import { auth, signIn, signOut } from '@/lib/auth'
+import SiteHeader from './_components/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
-async function signInGitHub() {
-  'use server'
-  await signIn('github')
-}
-
-async function signOutAction() {
-  'use server'
-  await signOut({ redirectTo: '/' })
-}
-
 export default async function Home() {
-  const session = await auth()
-  const user = session?.user as { handle?: string; image?: string | null } | undefined
-
   let posts: Array<Record<string, unknown>> = []
   try {
     const d = await db()
@@ -33,48 +20,7 @@ export default async function Home() {
 
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
-      <header className="px-6 py-4 flex items-center justify-between border-b border-neutral-200/70">
-        <Link href="/" className="flex items-center gap-2.5">
-          <img
-            src="/logo.png"
-            alt=""
-            width={32}
-            height={32}
-            className="w-8 h-8 rounded-md"
-          />
-          <span className="font-serif text-2xl tracking-tight">claudewall</span>
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          {user ? (
-            <>
-              <Link
-                href={`/u/${user.handle}`}
-                className="flex items-center gap-2 hover:underline"
-              >
-                {user.image && (
-                  <img
-                    src={user.image}
-                    alt=""
-                    className="w-7 h-7 rounded-full"
-                  />
-                )}
-                <span>@{user.handle}</span>
-              </Link>
-              <form action={signOutAction}>
-                <button className="text-neutral-500 hover:text-neutral-900">
-                  Sign out
-                </button>
-              </form>
-            </>
-          ) : (
-            <form action={signInGitHub}>
-              <button className="px-4 py-1.5 bg-black text-white rounded-full text-sm">
-                Sign in with GitHub
-              </button>
-            </form>
-          )}
-        </nav>
-      </header>
+      <SiteHeader />
 
       {posts.length === 0 ? (
         <div className="max-w-xl mx-auto p-10 text-center text-neutral-700 space-y-8">
