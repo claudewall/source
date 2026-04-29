@@ -83,7 +83,7 @@ async function main() {
 
       const slashCommands = [
         { src: 'wall.md', label: '/wall' },
-        { src: 'tip.md', label: '/tip (preview)' },
+        { src: 'tip.md', label: '/tip' },
       ]
       for (const cmd of slashCommands) {
         const srcPath = path.join(__dirname, cmd.src)
