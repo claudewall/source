@@ -66,6 +66,13 @@ export default async function Page({
     return (
       <main className="min-h-screen bg-[#faf6ec] flex items-center justify-center p-8">
         <div className="text-center space-y-3">
+          <img
+            src="/logo.png"
+            alt=""
+            width={56}
+            height={56}
+            className="w-14 h-14 rounded-md mx-auto"
+          />
           <h1 className="text-3xl font-serif">Authorized</h1>
           <p className="text-neutral-600">
             You can close this tab and return to your terminal.
@@ -78,7 +85,16 @@ export default async function Page({
   return (
     <main className="min-h-screen bg-[#faf6ec] flex items-center justify-center p-8">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-8 space-y-5">
-        <h1 className="text-2xl font-serif">Authorize Claude Code</h1>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo.png"
+            alt=""
+            width={40}
+            height={40}
+            className="w-10 h-10 rounded-md"
+          />
+          <h1 className="text-2xl font-serif">Authorize Claude Code</h1>
+        </div>
         {sp.error && (
           <p className="text-sm text-red-600">
             {sp.error === 'expired'
