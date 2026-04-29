@@ -4,6 +4,27 @@ import { ObjectId } from 'mongodb'
 
 export const runtime = 'nodejs'
 
+const LORA_REGULAR = 'https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Regular.ttf'
+const LORA_ITALIC = 'https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Italic.ttf'
+
+let fontsCache: Promise<{ regular: ArrayBuffer; italic: ArrayBuffer }> | null = null
+
+function loadFonts() {
+  if (!fontsCache) {
+    fontsCache = Promise.all([
+      fetch(LORA_REGULAR, { cache: 'force-cache' }).then((r) => r.arrayBuffer()),
+      fetch(LORA_ITALIC, { cache: 'force-cache' }).then((r) => r.arrayBuffer()),
+    ])
+      .then(([regular, italic]) => ({ regular, italic }))
+      .catch((err) => {
+        // If the fetch ever fails, allow a retry on the next call.
+        fontsCache = null
+        throw err
+      })
+  }
+  return fontsCache
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ postId: string }> },
@@ -24,6 +45,8 @@ export async function GET(
   const length = quote.length
   const fontSize = length > 220 ? 36 : length > 140 ? 44 : length > 80 ? 52 : 60
 
+  const fonts = await loadFonts()
+
   return new ImageResponse(
     (
       <div
@@ -36,6 +59,7 @@ export async function GET(
           justifyContent: 'center',
           background: '#f5f0e1',
           padding: '64px 96px',
+          fontFamily: 'Lora',
         }}
       >
         <div
@@ -45,7 +69,6 @@ export async function GET(
             textAlign: 'center',
             lineHeight: 1.35,
             maxWidth: '900px',
-            fontFamily: 'serif',
           }}
         >
           {quote}
@@ -53,7 +76,6 @@ export async function GET(
         <div
           style={{
             fontSize: 64,
-            fontFamily: 'serif',
             fontStyle: 'italic',
             color: '#1a1a1a',
             marginTop: 36,
@@ -63,6 +85,13 @@ export async function GET(
         </div>
       </div>
     ),
-    { width: 1024, height: 540 },
+    {
+      width: 1024,
+      height: 540,
+      fonts: [
+        { name: 'Lora', data: fonts.regular, weight: 400, style: 'normal' },
+        { name: 'Lora', data: fonts.italic, weight: 400, style: 'italic' },
+      ],
+    },
   )
 }

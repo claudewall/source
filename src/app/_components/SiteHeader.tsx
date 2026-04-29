@@ -41,6 +41,25 @@ function GithubMark({ className }: { className?: string }) {
   )
 }
 
+function SignOutIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  )
+}
+
 export default async function SiteHeader() {
   const session = await auth()
   const user = session?.user as
@@ -49,31 +68,33 @@ export default async function SiteHeader() {
   const stars = await getStars()
 
   return (
-    <header className="px-6 py-4 flex items-center justify-between border-b border-neutral-200/70">
-      <Link href="/" className="flex items-center gap-2.5">
+    <header className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 border-b border-neutral-200/70 bg-[#faf6ec]">
+      <Link href="/" className="flex items-center gap-2 min-w-0">
         <img
           src="/logo.png"
-          alt=""
+          alt="claudewall"
           width={32}
           height={32}
-          className="w-8 h-8 rounded-md"
+          className="w-8 h-8 rounded-md flex-none"
         />
-        <span className="font-serif text-2xl tracking-tight">claudewall</span>
+        <span className="hidden sm:inline font-serif text-2xl tracking-tight">
+          claudewall
+        </span>
       </Link>
 
-      <nav className="flex items-center gap-3 text-sm">
+      <nav className="flex items-center gap-2 sm:gap-3 text-sm flex-none">
         <a
           href="https://github.com/claudewall"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-neutral-300 bg-white hover:bg-neutral-50 transition"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md border border-neutral-300 bg-white hover:bg-neutral-50 transition"
           aria-label="claudewall on GitHub"
         >
           <GithubMark className="w-4 h-4" />
           <span className="hidden sm:inline">GitHub</span>
           {stars !== null && (
             <>
-              <span className="text-neutral-300" aria-hidden>
+              <span className="text-neutral-300 hidden sm:inline" aria-hidden>
                 |
               </span>
               <span aria-hidden>★</span>
@@ -86,27 +107,33 @@ export default async function SiteHeader() {
           <>
             <Link
               href={`/u/${user.handle}`}
-              className="flex items-center gap-2 hover:underline"
+              className="flex items-center gap-2 hover:underline min-w-0"
+              aria-label={`@${user.handle}`}
             >
               {user.image && (
                 <img
                   src={user.image}
                   alt=""
-                  className="w-7 h-7 rounded-full"
+                  className="w-7 h-7 rounded-full flex-none"
                 />
               )}
-              <span>@{user.handle}</span>
+              <span className="hidden md:inline truncate">@{user.handle}</span>
             </Link>
             <form action={signOutAction}>
-              <button className="text-neutral-500 hover:text-neutral-900">
-                Sign out
+              <button
+                className="text-neutral-500 hover:text-neutral-900 p-1.5"
+                aria-label="Sign out"
+              >
+                <SignOutIcon className="w-4 h-4 sm:hidden" />
+                <span className="hidden sm:inline">Sign out</span>
               </button>
             </form>
           </>
         ) : (
           <form action={signInGitHub}>
-            <button className="px-4 py-1.5 bg-black text-white rounded-full text-sm">
-              Sign in with GitHub
+            <button className="px-3 sm:px-4 py-1.5 bg-black text-white rounded-full text-sm whitespace-nowrap">
+              <span className="sm:hidden">Sign in</span>
+              <span className="hidden sm:inline">Sign in with GitHub</span>
             </button>
           </form>
         )}
