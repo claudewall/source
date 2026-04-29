@@ -4,20 +4,27 @@ import { ObjectId } from 'mongodb'
 
 export const runtime = 'nodejs'
 
-const LORA_REGULAR = 'https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Regular.ttf'
-const LORA_ITALIC = 'https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Italic.ttf'
-
 let fontsCache: Promise<{ regular: ArrayBuffer; italic: ArrayBuffer }> | null = null
 
-function loadFonts() {
+function loadFonts(origin: string) {
   if (!fontsCache) {
     fontsCache = Promise.all([
-      fetch(LORA_REGULAR, { cache: 'force-cache' }).then((r) => r.arrayBuffer()),
-      fetch(LORA_ITALIC, { cache: 'force-cache' }).then((r) => r.arrayBuffer()),
+      fetch(`${origin}/fonts/Lora-Regular.ttf`, { cache: 'force-cache' }).then(
+        (r) => {
+          if (!r.ok) throw new Error(`Lora-Regular: HTTP ${r.status}`)
+          return r.arrayBuffer()
+        },
+      ),
+      fetch(`${origin}/fonts/Lora-Italic.ttf`, { cache: 'force-cache' }).then(
+        (r) => {
+          if (!r.ok) throw new Error(`Lora-Italic: HTTP ${r.status}`)
+          return r.arrayBuffer()
+        },
+      ),
     ])
       .then(([regular, italic]) => ({ regular, italic }))
       .catch((err) => {
-        // If the fetch ever fails, allow a retry on the next call.
+        // Allow a retry on the next call.
         fontsCache = null
         throw err
       })
@@ -26,7 +33,7 @@ function loadFonts() {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ postId: string }> },
 ) {
   const { postId } = await params
@@ -45,7 +52,12 @@ export async function GET(
   const length = quote.length
   const fontSize = length > 220 ? 36 : length > 140 ? 44 : length > 80 ? 52 : 60
 
-  const fonts = await loadFonts()
+  let fonts: { regular: ArrayBuffer; italic: ArrayBuffer } | null = null
+  try {
+    fonts = await loadFonts(new URL(req.url).origin)
+  } catch (e) {
+    console.warn('og: font load failed', (e as Error).message)
+  }
 
   return new ImageResponse(
     (
@@ -59,7 +71,7 @@ export async function GET(
           justifyContent: 'center',
           background: '#f5f0e1',
           padding: '64px 96px',
-          fontFamily: 'Lora',
+          fontFamily: fonts ? 'Lora' : 'serif',
         }}
       >
         <div
@@ -88,10 +100,22 @@ export async function GET(
     {
       width: 1024,
       height: 540,
-      fonts: [
-        { name: 'Lora', data: fonts.regular, weight: 400, style: 'normal' },
-        { name: 'Lora', data: fonts.italic, weight: 400, style: 'italic' },
-      ],
+      ...(fonts && {
+        fonts: [
+          {
+            name: 'Lora',
+            data: fonts.regular,
+            weight: 400,
+            style: 'normal',
+          },
+          {
+            name: 'Lora',
+            data: fonts.italic,
+            weight: 400,
+            style: 'italic',
+          },
+        ],
+      }),
     },
   )
 }
