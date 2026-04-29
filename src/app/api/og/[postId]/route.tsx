@@ -4,36 +4,8 @@ import { ObjectId } from 'mongodb'
 
 export const runtime = 'nodejs'
 
-let fontsCache: Promise<{ regular: ArrayBuffer; italic: ArrayBuffer }> | null = null
-
-function loadFonts(origin: string) {
-  if (!fontsCache) {
-    fontsCache = Promise.all([
-      fetch(`${origin}/fonts/Lora-Regular.ttf`, { cache: 'force-cache' }).then(
-        (r) => {
-          if (!r.ok) throw new Error(`Lora-Regular: HTTP ${r.status}`)
-          return r.arrayBuffer()
-        },
-      ),
-      fetch(`${origin}/fonts/Lora-Italic.ttf`, { cache: 'force-cache' }).then(
-        (r) => {
-          if (!r.ok) throw new Error(`Lora-Italic: HTTP ${r.status}`)
-          return r.arrayBuffer()
-        },
-      ),
-    ])
-      .then(([regular, italic]) => ({ regular, italic }))
-      .catch((err) => {
-        // Allow a retry on the next call.
-        fontsCache = null
-        throw err
-      })
-  }
-  return fontsCache
-}
-
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ postId: string }> },
 ) {
   const { postId } = await params
@@ -52,13 +24,6 @@ export async function GET(
   const length = quote.length
   const fontSize = length > 220 ? 36 : length > 140 ? 44 : length > 80 ? 52 : 60
 
-  let fonts: { regular: ArrayBuffer; italic: ArrayBuffer } | null = null
-  try {
-    fonts = await loadFonts(new URL(req.url).origin)
-  } catch (e) {
-    console.warn('og: font load failed', (e as Error).message)
-  }
-
   return new ImageResponse(
     (
       <div
@@ -71,7 +36,7 @@ export async function GET(
           justifyContent: 'center',
           background: '#f5f0e1',
           padding: '64px 96px',
-          fontFamily: fonts ? 'Lora' : 'serif',
+          fontFamily: 'serif',
         }}
       >
         <div
@@ -97,25 +62,6 @@ export async function GET(
         </div>
       </div>
     ),
-    {
-      width: 1024,
-      height: 540,
-      ...(fonts && {
-        fonts: [
-          {
-            name: 'Lora',
-            data: fonts.regular,
-            weight: 400,
-            style: 'normal',
-          },
-          {
-            name: 'Lora',
-            data: fonts.italic,
-            weight: 400,
-            style: 'italic',
-          },
-        ],
-      }),
-    },
+    { width: 1024, height: 540 },
   )
 }
