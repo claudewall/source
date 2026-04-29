@@ -6,6 +6,7 @@ const MAX_TITLE = 120
 const MAX_BODY = 1000
 const MAX_CODE = 1500
 const MAX_LANG = 30
+const MAX_RATIONALE = 200
 const MAX_TAGS = 5
 const MAX_TAG_LEN = 30
 const MIN_TAG_LEN = 2
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
     body?: unknown
     code?: unknown
     lang?: unknown
+    rationale?: unknown
     tags?: unknown
     model?: unknown
   }
@@ -61,6 +63,10 @@ export async function POST(req: NextRequest) {
   const lang =
     langRaw.length > 0 && langRaw.length <= MAX_LANG ? langRaw : undefined
 
+  const rationaleRaw = body.rationale ? String(body.rationale).trim() : ''
+  const rationale =
+    rationaleRaw.length > 0 ? rationaleRaw.slice(0, MAX_RATIONALE) : undefined
+
   let tags: string[] = []
   if (Array.isArray(body.tags)) {
     const seen = new Set<string>()
@@ -87,7 +93,10 @@ export async function POST(req: NextRequest) {
 
   // Best-effort embedding for vector search. Fails open — a Voyage outage
   // or missing key just means this tip isn't searchable until backfilled.
-  const corpus = [title, tipBody, code, tags.join(' ')]
+  // Corpus deliberately excludes `code` because variable names and syntax
+  // tokens muddle the semantic direction; rationale + body + tags carry the
+  // signal a query is most likely to match.
+  const corpus = [rationale, title, tipBody, tags.join(' ')]
     .filter(Boolean)
     .join('\n')
   const embedding = await embedText(corpus)
@@ -101,6 +110,7 @@ export async function POST(req: NextRequest) {
     body: tipBody,
     code,
     lang,
+    rationale,
     tags,
     model: body.model ? String(body.model).slice(0, 80) : undefined,
     likeCount: 0,
