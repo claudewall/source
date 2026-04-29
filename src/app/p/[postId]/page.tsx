@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ObjectId } from 'mongodb'
 import { db } from '@/lib/mongo'
+import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
+import DeleteQuoteButton from '../../_components/DeleteQuoteButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,11 +25,16 @@ export default async function Page({
   const post = await (await db()).collection('posts').findOne({ _id: _id! })
   if (!post) notFound()
 
+  const session = await auth()
+  const sessionHandle = (session?.user as { handle?: string } | undefined)
+    ?.handle
+
   const handle = String((post as { authorHandle?: string }).authorHandle ?? '')
   const image = (post as { authorImage?: string | null }).authorImage
   const name = (post as { authorName?: string }).authorName
   const model = (post as { model?: string }).model
   const quote = String((post as { quote?: string }).quote ?? '')
+  const isOwn = sessionHandle !== undefined && sessionHandle === handle
 
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
@@ -62,6 +69,15 @@ export default async function Page({
               <span className="ml-auto text-xs text-neutral-500 font-mono">
                 {model}
               </span>
+            )}
+            {isOwn && (
+              <div className={model ? '' : 'ml-auto'}>
+                <DeleteQuoteButton
+                  postId={postId}
+                  redirectTo="/"
+                  variant="inline"
+                />
+              </div>
             )}
           </div>
         </div>

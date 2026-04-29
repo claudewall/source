@@ -1,11 +1,17 @@
 import Link from 'next/link'
 import { db } from '@/lib/mongo'
+import { auth } from '@/lib/auth'
 import SiteHeader from './_components/SiteHeader'
 import InstallBanner from './_components/InstallBanner'
+import DeleteQuoteButton from './_components/DeleteQuoteButton'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
+  const session = await auth()
+  const sessionHandle = (session?.user as { handle?: string } | undefined)
+    ?.handle
+
   let posts: Array<Record<string, unknown>> = []
   try {
     const d = await db()
@@ -81,11 +87,14 @@ export default async function Home() {
               )
               const image = (p as { authorImage?: string | null }).authorImage
               const quote = String((p as { quote?: string }).quote ?? '')
+              const isOwn =
+                sessionHandle !== undefined && sessionHandle === handle
               return (
                 <div
                   key={id}
-                  className="mb-4 break-inside-avoid bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition"
+                  className="relative mb-4 break-inside-avoid bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition"
                 >
+                  {isOwn && <DeleteQuoteButton postId={id} />}
                   <Link href={`/p/${id}`}>
                     <img
                       src={`/api/og/${id}`}

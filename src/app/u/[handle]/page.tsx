@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb'
 import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
+import DeleteQuoteButton from '../../_components/DeleteQuoteButton'
 import FollowButton from './FollowButton'
 
 export const dynamic = 'force-dynamic'
@@ -87,8 +88,9 @@ export default async function Page({
               return (
                 <div
                   key={id}
-                  className="mb-4 break-inside-avoid bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition"
+                  className="relative mb-4 break-inside-avoid bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition"
                 >
+                  {isOwn && <DeleteQuoteButton postId={id} />}
                   <Link href={`/p/${id}`}>
                     <img
                       src={`/api/og/${id}`}
