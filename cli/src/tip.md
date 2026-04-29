@@ -23,7 +23,7 @@ If fewer than 10 qualify, return as many as do. If zero qualify, say so and stop
 
 ## 2. Format each tip
 
-For each candidate, output **exactly** this structure. The number appears **once**, in the `###` heading. Do **not** repeat the number on the explanation, code, or rationale lines. Separate consecutive tips with a `---` line.
+For each candidate, output **exactly** this structure. The number appears **once**, in the `###` heading. Do **not** repeat the number on the explanation, code, tags, or rationale lines. Separate consecutive tips with a `---` line.
 
 ```
 ### Tip N — <one-line title>
@@ -32,10 +32,22 @@ For each candidate, output **exactly** this structure. The number appears **once
 
 <optional fenced code block, ≤ 12 lines, illustrative only — no real paths/names/business logic>
 
+**Tags:** <comma-separated list of 2–5 tags>
+
 **Why share:** <one-line rationale>
 
 ---
 ```
+
+### Tag rules
+
+- 2–5 tags per tip
+- All lowercase
+- Multi-word tags use hyphens (e.g. `time-series`, `react-hooks`, `unit-tests`)
+- Prefer well-known nouns: language, runtime, library, framework, database, domain concept
+- Examples of good tags: `python`, `javascript`, `typescript`, `react`, `mongodb`, `postgres`, `redis`, `pytest`, `async`, `aggregation`, `caching`, `observability`, `oauth`, `dashboards`, `time-series`, `testing`, `error-handling`
+- Avoid project-specific or company-specific tags
+- Don't invent overly narrow tags — `python-datetime` is worse than `python` + `datetime`
 
 A correctly-formatted tip looks like this:
 
@@ -55,6 +67,8 @@ try:
 finally:
     await gen.aclose()
 ```
+
+**Tags:** python, async, generators, resource-management
 
 **Why share:** Cleanup correctness on the early-exit path is rarely covered by tests.
 
