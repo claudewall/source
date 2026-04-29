@@ -35,41 +35,35 @@ Wait for the user's reply.
 
 If the user replied `none`, stop.
 
-Otherwise:
+For **each** chosen quote:
 
-1. Read the auth token: use the **Read** tool on `~/.claudewall/config.json` (Windows: `%USERPROFILE%\.claudewall\config.json`) and pull the `token` field.
+**a. Write the JSON body** with the **Write** tool to a UTF-8 file at an absolute path:
 
-2. For **each** chosen quote, do the following:
+- macOS / Linux: `~/.claudewall/.submit.json` resolved to absolute (e.g. `/Users/<you>/.claudewall/.submit.json`)
+- Windows: `C:\Users\<you>\.claudewall\.submit.json`
 
-   **a. Write the request body to a UTF-8 file.** Use the **Write** tool — never inline JSON in the curl command, because Windows shells can mangle multi-byte characters like `—` into bytes that the server can't decode as UTF-8.
+Single-line JSON object, properly escape `"` and `\` inside the quote text:
 
-   Path:
-   - macOS / Linux: `~/.claudewall/.submit.json` (resolve to an absolute path — e.g. `/Users/<you>/.claudewall/.submit.json`)
-   - Windows: `C:\Users\<you>\.claudewall\.submit.json`
+```
+{"quote":"<the quote>","model":"<your model id>","rationale":"<one line>"}
+```
 
-   Content (single line, valid JSON, properly escape `"` and `\` inside the quote text):
-   ```
-   {"quote":"<the quote>","model":"<your model id>","rationale":"<one line>"}
-   ```
-   Omit the `"model"` field entirely if you don't know your model id.
+Omit the `"model"` field entirely if you don't know your model id.
 
-   **b. POST the file** via the **Bash** tool. `--data-binary @file` reads the bytes verbatim, preserving UTF-8:
-   ```
-   curl -sS -X POST https://claudewall.com/api/submit \
-     -H "Authorization: Bearer <TOKEN>" \
-     -H "Content-Type: application/json" \
-     --data-binary @<absolute-path-to-.submit.json>
-   ```
+**b. Publish** via the **Bash** tool:
 
-   **c. Print the returned `url`** to the user.
+```
+npx claudewall publish quote <absolute-path-to-.submit.json>
+```
 
-3. After all submissions, use **Bash** to delete the temp file:
-   ```
-   rm <absolute-path-to-.submit.json>
-   ```
-   (Windows: `del "<path>"`.)
+This binary loads the auth token from `~/.claudewall/config.json` at runtime — **do not** add an `Authorization` header, **do not** invoke `curl` directly, **do not** read or print the token anywhere. On success, it prints **just the URL** of the published quote on stdout. Print that URL to the user.
 
-## 4. Failure modes
+On failure the binary exits non-zero with the reason on stderr. If it says to run `npx claudewall init`, tell the user to do that and stop. Otherwise show the error and continue with the next quote.
 
-- If `~/.claudewall/config.json` does not exist or `curl` returns **401**, tell the user to run `npx claudewall init` and stop.
-- If `curl` returns any other non-2xx, show the response body and continue with the next quote.
+**c. After all submissions**, delete the temp file via **Bash**:
+
+```
+rm <absolute-path>
+```
+
+(Windows: `del "<path>"`.)
