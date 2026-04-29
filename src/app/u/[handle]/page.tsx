@@ -5,6 +5,7 @@ import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
 import DeleteQuoteButton from '../../_components/DeleteQuoteButton'
+import LikeButton from '../../_components/LikeButton'
 import FollowButton from './FollowButton'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +47,20 @@ export default async function Page({
     d.collection('follows').countDocuments({ followerId: user!._id }),
   ])
 
+  let likedSet = new Set<string>()
+  if (sessionUser?.id && posts.length > 0) {
+    const ids = posts.map((p) => (p as { _id: ObjectId })._id)
+    const liked = await d
+      .collection('likes')
+      .find({
+        userId: new ObjectId(sessionUser.id),
+        postId: { $in: ids },
+      })
+      .project({ postId: 1 })
+      .toArray()
+    likedSet = new Set(liked.map((l) => String(l.postId)))
+  }
+
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
       <SiteHeader />
@@ -85,6 +100,8 @@ export default async function Page({
                 (p as { _id: { toString(): string } })._id,
               )
               const quote = String((p as { quote?: string }).quote ?? '')
+              const likeCount =
+                (p as { likeCount?: number }).likeCount ?? 0
               return (
                 <div
                   key={id}
@@ -99,6 +116,14 @@ export default async function Page({
                       loading="lazy"
                     />
                   </Link>
+                  <div className="px-3 py-2 flex items-center justify-end">
+                    <LikeButton
+                      postId={id}
+                      initialLiked={likedSet.has(id)}
+                      initialCount={likeCount}
+                      signedIn={!!sessionUser?.id}
+                    />
+                  </div>
                 </div>
               )
             })}

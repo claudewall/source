@@ -5,6 +5,7 @@ import { db } from '@/lib/mongo'
 import { auth } from '@/lib/auth'
 import SiteHeader from '../../_components/SiteHeader'
 import DeleteQuoteButton from '../../_components/DeleteQuoteButton'
+import LikeButton from '../../_components/LikeButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,19 +23,31 @@ export default async function Page({
     notFound()
   }
 
-  const post = await (await db()).collection('posts').findOne({ _id: _id! })
+  const d = await db()
+  const post = await d.collection('posts').findOne({ _id: _id! })
   if (!post) notFound()
 
   const session = await auth()
-  const sessionHandle = (session?.user as { handle?: string } | undefined)
-    ?.handle
+  const sessionUser = session?.user as
+    | { id?: string; handle?: string }
+    | undefined
+  const sessionHandle = sessionUser?.handle
 
   const handle = String((post as { authorHandle?: string }).authorHandle ?? '')
   const image = (post as { authorImage?: string | null }).authorImage
   const name = (post as { authorName?: string }).authorName
   const model = (post as { model?: string }).model
   const quote = String((post as { quote?: string }).quote ?? '')
+  const likeCount = (post as { likeCount?: number }).likeCount ?? 0
   const isOwn = sessionHandle !== undefined && sessionHandle === handle
+
+  let liked = false
+  if (sessionUser?.id) {
+    liked = !!(await d.collection('likes').findOne({
+      userId: new ObjectId(sessionUser.id),
+      postId: _id!,
+    }))
+  }
 
   return (
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
@@ -46,7 +59,7 @@ export default async function Page({
             alt={quote}
             className="w-full block"
           />
-          <div className="p-5 flex items-center gap-3">
+          <div className="p-5 flex items-center gap-3 flex-wrap">
             {image && (
               <img
                 src={image}
@@ -66,19 +79,26 @@ export default async function Page({
               )}
             </div>
             {model && (
-              <span className="ml-auto text-xs text-neutral-500 font-mono">
+              <span className="text-xs text-neutral-500 font-mono">
                 {model}
               </span>
             )}
-            {isOwn && (
-              <div className={model ? '' : 'ml-auto'}>
+            <div className="ml-auto flex items-center gap-2">
+              <LikeButton
+                postId={postId}
+                initialLiked={liked}
+                initialCount={likeCount}
+                signedIn={!!sessionUser?.id}
+                variant="inline"
+              />
+              {isOwn && (
                 <DeleteQuoteButton
                   postId={postId}
                   redirectTo="/"
                   variant="inline"
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

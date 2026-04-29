@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     quote,
     model: body.model ? String(body.model).slice(0, 80) : undefined,
     rationale: body.rationale ? String(body.rationale).slice(0, MAX_RATIONALE) : undefined,
+    likeCount: 0,
     createdAt: new Date(),
   }
   const r = await d.collection('posts').insertOne(post)
