@@ -83,7 +83,9 @@ async function main() {
 
       const slashCommands = [
         { src: 'wall.md', label: '/wall' },
+        { src: 'wall-auto.md', label: '/wall-auto' },
         { src: 'tip.md', label: '/tip' },
+        { src: 'tip-auto.md', label: '/tip-auto' },
       ]
       for (const cmd of slashCommands) {
         const srcPath = path.join(__dirname, cmd.src)
@@ -93,7 +95,8 @@ async function main() {
       }
 
       console.log('')
-      console.log('All set. Run /wall (or /tip) in any Claude Code session.')
+      console.log('All set. Run /wall or /tip in any Claude Code session.')
+      console.log('Hands-off variants: /wall-auto, /tip-auto (use with /loop).')
       return
     }
   }

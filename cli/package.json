@@ -1,6 +1,6 @@
 {
   "name": "claudewall",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Register the /wall slash command for Claude Code and authorize it against claudewall.com",
   "bin": {
     "claudewall": "./bin/claudewall.js"
