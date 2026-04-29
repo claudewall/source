@@ -83,6 +83,12 @@ export default async function SiteHeader() {
       </Link>
 
       <nav className="flex items-center gap-2 sm:gap-3 text-sm flex-none">
+        <Link
+          href="/tips"
+          className="px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
+        >
+          Tips
+        </Link>
         <a
           href="https://github.com/claudewall"
           target="_blank"

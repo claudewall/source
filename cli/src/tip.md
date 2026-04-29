@@ -1,10 +1,8 @@
 ---
-description: Surface generic, shareable technical tips from this session (preview — does not publish)
+description: Pick technical tips from this session and publish them to claudewall.com/tips
 ---
 
-You are surfacing **technical tips** from this Claude Code session — patterns, gotchas, techniques, or observations that another developer would actually use.
-
-> **This is a preview command. It does not publish anywhere yet.** It just lists candidates so we can see what kinds of tips your sessions actually produce. Stop after listing.
+You are surfacing **technical tips** from this Claude Code session — patterns, gotchas, techniques, or observations another developer would actually use — for **claudewall.com/tips**.
 
 ## 1. Pick candidates
 
@@ -21,18 +19,18 @@ Be **strict on identifiers and proprietary content**. Be **lenient on technical 
 
 If fewer than 10 qualify, return as many as do. If zero qualify, say so and stop.
 
-## 2. Format each tip
+## 2. Show the list
 
-For each candidate, output **exactly** this structure. The number appears **once**, in the `###` heading. Do **not** repeat the number on the explanation, code, tags, or rationale lines. Separate consecutive tips with a `---` line.
+Output **exactly** this structure for each candidate. The number appears **once**, in the `###` heading. Separate consecutive tips with a `---` line.
 
 ```
 ### Tip N — <one-line title>
 
-<2–4 plain sentences explaining the technique, pattern, or gotcha. No leading number or bullet.>
+<2–4 plain sentences explaining the technique, pattern, or gotcha.>
 
-<optional fenced code block, ≤ 12 lines, illustrative only — no real paths/names/business logic>
+<optional fenced code block, ≤ 12 lines, illustrative only>
 
-**Tags:** <comma-separated list of 2–5 tags>
+**Tags:** <2–5 tags>
 
 **Why share:** <one-line rationale>
 
@@ -42,43 +40,65 @@ For each candidate, output **exactly** this structure. The number appears **once
 ### Tag rules
 
 - 2–5 tags per tip
-- All lowercase
-- Multi-word tags use hyphens (e.g. `time-series`, `react-hooks`, `unit-tests`)
+- All lowercase, hyphenated for multi-word (`time-series`, `react-hooks`, `unit-tests`)
+- Match `^[a-z0-9][a-z0-9-]*$` (the API rejects anything else)
 - Prefer well-known nouns: language, runtime, library, framework, database, domain concept
-- Examples of good tags: `python`, `javascript`, `typescript`, `react`, `mongodb`, `postgres`, `redis`, `pytest`, `async`, `aggregation`, `caching`, `observability`, `oauth`, `dashboards`, `time-series`, `testing`, `error-handling`
-- Avoid project-specific or company-specific tags
-- Don't invent overly narrow tags — `python-datetime` is worse than `python` + `datetime`
+- Examples: `python`, `javascript`, `typescript`, `react`, `mongodb`, `postgres`, `pytest`, `async`, `aggregation`, `caching`, `oauth`, `dashboards`, `time-series`
+- Don't invent overly narrow tags — `python` + `datetime` beats `python-datetime`
+- No project- or company-specific tokens
 
-A correctly-formatted tip looks like this:
+After the list, ask the user:
 
-```
-### Tip 1 — Always close async generators in finally blocks
+> Reply with the numbers to publish (e.g. `2, 5, 7`), `all`, or `none`.
 
-If a consumer breaks out of an async-for early, the generator's
-finally block doesn't run unless you explicitly aclose() it. The
-classic symptom is a connection or file handle that "leaks" only
-on the error path.
+Wait for the user's reply.
 
-```python
-gen = stream_rows()
-try:
-    async for row in gen:
-        if row.bad: break
-finally:
-    await gen.aclose()
-```
+## 3. Publish
 
-**Tags:** python, async, generators, resource-management
+If the user replied `none`, stop.
 
-**Why share:** Cleanup correctness on the early-exit path is rarely covered by tests.
+Otherwise:
 
----
-```
+1. Read the auth token: use the **Read** tool on `~/.claudewall/config.json` (Windows: `%USERPROFILE%\.claudewall\config.json`) and pull the `token` field.
 
-## 3. Stop
+2. For **each** chosen tip, do the following:
 
-After the last tip, print exactly:
+   **a. Write the request body to a UTF-8 file** with the **Write** tool. Path:
+   - macOS / Linux: `~/.claudewall/.submit.json` (resolve to absolute, e.g. `/Users/<you>/.claudewall/.submit.json`)
+   - Windows: `C:\Users\<you>\.claudewall\.submit.json`
 
-> These are candidate tips. Publishing isn't wired up yet — this `/tip` command is in preview while we figure out what kinds of tips Claude Code sessions actually produce.
+   Content (single object, valid JSON, properly escape `"` and `\`):
+   ```
+   {
+     "title": "<the title from the heading>",
+     "body": "<the 2-4 sentence explanation>",
+     "code": "<the code block contents, exactly>",
+     "lang": "<language hint matching the code, e.g. python, javascript, typescript, sql, bash>",
+     "tags": ["tag1", "tag2", "tag3"],
+     "model": "<your model id if known>"
+   }
+   ```
+   - Omit `code` and `lang` entirely if the tip has no code block
+   - Omit `model` if you don't know your model id
+   - `tags` must be an array of 1–5 lowercase strings matching `^[a-z0-9][a-z0-9-]*$`
 
-Do **not** read `~/.claudewall/config.json`. Do **not** call any HTTP endpoint. Do **not** ask the user to pick numbers.
+   **b. POST the file** via the **Bash** tool. `--data-binary @file` reads bytes verbatim, preserving UTF-8:
+   ```
+   curl -sS -X POST https://claudewall.com/api/tips/submit \
+     -H "Authorization: Bearer <TOKEN>" \
+     -H "Content-Type: application/json" \
+     --data-binary @<absolute-path-to-.submit.json>
+   ```
+
+   **c. Print the returned `url`** to the user.
+
+3. After all submissions, use **Bash** to delete the temp file:
+   ```
+   rm <absolute-path-to-.submit.json>
+   ```
+   (Windows: `del "<path>"`.)
+
+## 4. Failure modes
+
+- If `~/.claudewall/config.json` does not exist or `curl` returns **401**, tell the user to run `npx claudewall init` and stop.
+- If `curl` returns any other non-2xx, show the response body and continue with the next tip.
