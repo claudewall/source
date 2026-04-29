@@ -1,0 +1,22 @@
+{
+  "name": "claudewall",
+  "version": "0.1.0",
+  "description": "Register the /wall slash command for Claude Code and authorize it against claudewall.com",
+  "bin": {
+    "claudewall": "./bin/claudewall.js"
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "slash-command",
+    "claudewall"
+  ]
+}
