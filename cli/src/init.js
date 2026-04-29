@@ -80,13 +80,20 @@ async function main() {
 
       const cmdsDir = path.join(os.homedir(), '.claude', 'commands')
       fs.mkdirSync(cmdsDir, { recursive: true })
-      const wallSrc = path.join(__dirname, 'wall.md')
-      const wallDst = path.join(cmdsDir, 'wall.md')
-      fs.copyFileSync(wallSrc, wallDst)
-      console.log(`✓ Installed /wall slash command at ${wallDst}`)
+
+      const slashCommands = [
+        { src: 'wall.md', label: '/wall' },
+        { src: 'tip.md', label: '/tip (preview)' },
+      ]
+      for (const cmd of slashCommands) {
+        const srcPath = path.join(__dirname, cmd.src)
+        const dstPath = path.join(cmdsDir, cmd.src)
+        fs.copyFileSync(srcPath, dstPath)
+        console.log(`✓ Installed ${cmd.label} at ${dstPath}`)
+      }
 
       console.log('')
-      console.log('All set. Run /wall in any Claude Code session.')
+      console.log('All set. Run /wall (or /tip) in any Claude Code session.')
       return
     }
   }
