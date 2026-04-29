@@ -35,24 +35,39 @@ Wait for the user's reply.
 
 If the user replied `none`, stop.
 
-Otherwise, for each chosen quote:
+Otherwise:
 
-1. Use the `Read` tool to read `~/.claudewall/config.json` and extract the `token` field.
-   - On Windows the path is `%USERPROFILE%\.claudewall\config.json`.
-2. Run via the `Bash` tool:
+1. Read the auth token: use the **Read** tool on `~/.claudewall/config.json` (Windows: `%USERPROFILE%\.claudewall\config.json`) and pull the `token` field.
+
+2. For **each** chosen quote, do the following:
+
+   **a. Write the request body to a UTF-8 file.** Use the **Write** tool — never inline JSON in the curl command, because Windows shells can mangle multi-byte characters like `—` into bytes that the server can't decode as UTF-8.
+
+   Path:
+   - macOS / Linux: `~/.claudewall/.submit.json` (resolve to an absolute path — e.g. `/Users/<you>/.claudewall/.submit.json`)
+   - Windows: `C:\Users\<you>\.claudewall\.submit.json`
+
+   Content (single line, valid JSON, properly escape `"` and `\` inside the quote text):
+   ```
+   {"quote":"<the quote>","model":"<your model id>","rationale":"<one line>"}
+   ```
+   Omit the `"model"` field entirely if you don't know your model id.
+
+   **b. POST the file** via the **Bash** tool. `--data-binary @file` reads the bytes verbatim, preserving UTF-8:
    ```
    curl -sS -X POST https://claudewall.com/api/submit \
      -H "Authorization: Bearer <TOKEN>" \
      -H "Content-Type: application/json" \
-     -d '{"quote":"<QUOTE>","model":"<MODEL>","rationale":"<RATIONALE>"}'
+     --data-binary @<absolute-path-to-.submit.json>
    ```
-   Substitute:
-   - `<TOKEN>` — the value from `config.json`
-   - `<QUOTE>` — the quote text (JSON-escape any `"` and `\`)
-   - `<MODEL>` — your model id if you know it (e.g. `claude-opus-4-7`); omit the field if not
-   - `<RATIONALE>` — your one-line rationale
 
-3. Print the returned `url` to the user.
+   **c. Print the returned `url`** to the user.
+
+3. After all submissions, use **Bash** to delete the temp file:
+   ```
+   rm <absolute-path-to-.submit.json>
+   ```
+   (Windows: `del "<path>"`.)
 
 ## 4. Failure modes
 
