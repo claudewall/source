@@ -21,23 +21,49 @@ Be **strict on identifiers and proprietary content**. Be **lenient on technical 
 
 If fewer than 10 qualify, return as many as do. If zero qualify, say so and stop.
 
-## 2. Show the list
+## 2. Format each tip
 
-For each tip:
+For each candidate, output **exactly** this structure. The number appears **once**, in the `###` heading. Do **not** repeat the number on the explanation, code, or rationale lines. Separate consecutive tips with a `---` line.
 
 ```
-N. <one-line title — what the tip is about>
+### Tip N — <one-line title>
 
-   <2–4 line explanation of the technique, pattern, or gotcha>
+<2–4 plain sentences explaining the technique, pattern, or gotcha. No leading number or bullet.>
 
-   <optional: short code block, ≤ 12 lines, illustrative only — no real paths/names/business logic>
+<optional fenced code block, ≤ 12 lines, illustrative only — no real paths/names/business logic>
 
-   — <one-line rationale: why this is worth sharing>
+**Why share:** <one-line rationale>
+
+---
+```
+
+A correctly-formatted tip looks like this:
+
+```
+### Tip 1 — Always close async generators in finally blocks
+
+If a consumer breaks out of an async-for early, the generator's
+finally block doesn't run unless you explicitly aclose() it. The
+classic symptom is a connection or file handle that "leaks" only
+on the error path.
+
+```python
+gen = stream_rows()
+try:
+    async for row in gen:
+        if row.bad: break
+finally:
+    await gen.aclose()
+```
+
+**Why share:** Cleanup correctness on the early-exit path is rarely covered by tests.
+
+---
 ```
 
 ## 3. Stop
 
-After the list, print:
+After the last tip, print exactly:
 
 > These are candidate tips. Publishing isn't wired up yet — this `/tip` command is in preview while we figure out what kinds of tips Claude Code sessions actually produce.
 
