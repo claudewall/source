@@ -6,6 +6,15 @@ const VECTOR_INDEX = 'tips_vector_index'
 const NUM_CANDIDATES = 100
 const LIMIT = 20
 
+// Vector search returns a ranked list with no built-in cutoff. These filters
+// turn it into a relevance-gated list: drop anything below an absolute
+// floor (the model is basically guessing below this), and drop anything
+// not within MIN_SCORE_RATIO of the top result (so a single great hit
+// doesn't drag along weak ones, but a band of similarly-good hits all
+// show through).
+const MIN_SCORE = 0.55
+const MIN_SCORE_RATIO = 0.85
+
 export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 500)
   if (!q) return Response.json({ q: '', tips: [] })
@@ -65,9 +74,20 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  const topScore =
+    typeof (tips[0] as { score?: number } | undefined)?.score === 'number'
+      ? ((tips[0] as { score: number }).score)
+      : 0
+  const cutoff = Math.max(MIN_SCORE, topScore * MIN_SCORE_RATIO)
+
+  const filtered = tips.filter((t) => {
+    const s = (t as { score?: number }).score
+    return typeof s === 'number' && s >= cutoff
+  })
+
   return Response.json({
     q,
-    tips: tips.map((t) => {
+    tips: filtered.map((t) => {
       const o = t as { _id: { toString(): string } } & Record<string, unknown>
       return { ...o, _id: o._id.toString() }
     }),
