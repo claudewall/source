@@ -6,11 +6,13 @@ You are recalling **prior lessons** the user has captured across past Claude Cod
 
 ## 1. Determine the query
 
-If the user passed an argument with `/recall`, treat that as the query.
+If the user passed an argument with `/recall`, treat that as the query verbatim. Skip to step 2.
 
-If no argument, look at the **first user message** of this conversation (the original task description). Ask the user:
+Otherwise, synthesize a one-line query from **the user's most recent substantive request** — what they're trying to do *right now*, not what the session opened on. Skip over short procedural replies (`yes`, `Y`, `go`, `ok`, `done`, single tokens, mere acknowledgements) and walk back through their recent prompts until you find a substantive one — the most recent message that names a goal, a problem, or a decision the model is about to act on. The synthesized query should describe **the imminent task or situation**, not the history of the conversation.
 
-> Recall lessons matching: "<a one-line synthesis of the task you're about to start>" — y/n, or supply your own query?
+Then ask:
+
+> Recall lessons matching: "<your one-line synthesis>" — y/n, or supply your own query?
 
 If the user replies `y`, use your synthesis. If they reply `n`, stop. Otherwise treat their reply as the query verbatim.
 
