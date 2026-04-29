@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import SiteHeader from '../_components/SiteHeader'
 import InstallBanner from '../_components/InstallBanner'
 import DeleteButton from '../_components/DeleteButton'
+import TagCloud from '../_components/TagCloud'
 import { deleteTip } from '../_actions/tips'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +23,7 @@ export default async function TipsPage({
     ?.handle
 
   let tips: Array<Record<string, unknown>> = []
+  let tagCounts: Array<{ tag: string; count: number }> = []
   try {
     const d = await db()
     const filter = tagFilter ? { tags: tagFilter } : {}
@@ -31,6 +33,22 @@ export default async function TipsPage({
       .sort({ createdAt: -1 })
       .limit(60)
       .toArray()
+
+    // Tag cloud: when a filter is active, the cloud shows tags that
+    // co-occur with it (so the active tag stays in view alongside its
+    // common companions); without a filter, it's the global cloud.
+    const cloudPipeline = [
+      ...(tagFilter ? [{ $match: { tags: tagFilter } }] : []),
+      { $unwind: '$tags' },
+      { $group: { _id: '$tags', count: { $sum: 1 } } },
+      { $sort: { count: -1 as const, _id: 1 as const } },
+      { $limit: 50 },
+    ]
+    const raw = await d.collection('tips').aggregate(cloudPipeline).toArray()
+    tagCounts = raw.map((r) => ({
+      tag: String((r as { _id: string })._id),
+      count: Number((r as { count: number }).count),
+    }))
   } catch {
     // DB not configured — empty state.
   }
@@ -69,6 +87,8 @@ export default async function TipsPage({
           </div>
         )}
       </div>
+
+      <TagCloud tags={tagCounts} activeTag={tagFilter} />
 
       {tips.length === 0 ? (
         <div className="max-w-xl mx-auto p-10 text-center text-neutral-700 space-y-4">
