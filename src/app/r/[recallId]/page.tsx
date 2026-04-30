@@ -33,6 +33,7 @@ type LessonDoc = {
   mistake?: string
   replacement?: string
   verification?: string
+  failureIndicators?: string[]
   tags?: string[]
   weight?: number
 }
@@ -261,6 +262,23 @@ export default async function RecallDetailPage({
                   )}
                   {l.verification && (
                     <Field label="Verification" value={l.verification} />
+                  )}
+                  {l.failureIndicators && l.failureIndicators.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1">
+                        Failure indicators
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {l.failureIndicators.map((fi) => (
+                          <span
+                            key={fi}
+                            className="text-xs font-mono bg-neutral-900 text-neutral-100 px-2 py-0.5 rounded"
+                          >
+                            {fi}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">

@@ -112,6 +112,7 @@ async function runRecall(
             mistake: 1,
             replacement: 1,
             verification: 1,
+            failureIndicators: 1,
             project: 1,
             tags: 1,
             weight: 1,

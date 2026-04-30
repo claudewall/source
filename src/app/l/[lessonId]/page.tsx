@@ -43,6 +43,8 @@ export default async function LessonDetailPage({
     (lesson as { replacement?: string }).replacement ?? '',
   )
   const verification = (lesson as { verification?: string }).verification
+  const failureIndicators = ((lesson as { failureIndicators?: string[] })
+    .failureIndicators ?? []) as string[]
   const tags = ((lesson as { tags?: unknown }).tags ?? []) as string[]
   const weight = Number((lesson as { weight?: number }).weight ?? 3)
   const model = (lesson as { model?: string }).model
@@ -117,6 +119,24 @@ export default async function LessonDetailPage({
               <p className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed font-mono text-sm bg-neutral-50 border border-neutral-200/70 rounded-md px-3 py-2">
                 {verification}
               </p>
+            </section>
+          )}
+
+          {failureIndicators.length > 0 && (
+            <section>
+              <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
+                Failure indicators — literal tokens to expect in stderr
+              </h2>
+              <div className="flex flex-wrap gap-1.5">
+                {failureIndicators.map((fi) => (
+                  <span
+                    key={fi}
+                    className="text-xs font-mono bg-neutral-900 text-neutral-100 px-2 py-1 rounded"
+                  >
+                    {fi}
+                  </span>
+                ))}
+              </div>
             </section>
           )}
 
