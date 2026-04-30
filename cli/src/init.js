@@ -6,10 +6,12 @@ const os = require('node:os')
 const readline = require('node:readline')
 const { spawn } = require('node:child_process')
 
-function prompt(question, defaultYes = true) {
+function prompt(question, { defaultYes = true, nonTtyDefault } = {}) {
   return new Promise((resolve) => {
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      resolve(defaultYes)
+      // Caller decides what to do when no human is available to answer.
+      // Most safety-relevant prompts should pass nonTtyDefault: false.
+      resolve(typeof nonTtyDefault === 'boolean' ? nonTtyDefault : defaultYes)
       return
     }
     const rl = readline.createInterface({
@@ -134,7 +136,13 @@ async function main() {
         console.log('that runs after every Bash call. On non-zero exit it queries your')
         console.log('past lessons and injects matching ones into Claude\'s next turn.')
         console.log('No-op on success. Uninstall any time: npx claudewall hooks uninstall')
-        const yes = await prompt('Install the hook now?', true)
+        const yes = await prompt('Install the hook now?', {
+          defaultYes: true,
+          // Non-TTY (CI, harness-wrapped shells, Claude Code's bang prefix)
+          // skips the install — there's no human to confirm a settings.json
+          // write. Users can opt in via `npx claudewall hooks install`.
+          nonTtyDefault: false,
+        })
         if (yes) {
           try {
             hooks.install()
@@ -143,7 +151,12 @@ async function main() {
             console.log('  retry later: npx claudewall hooks install')
           }
         } else {
-          console.log('  Skipped. You can install it later: npx claudewall hooks install')
+          if (process.stdin.isTTY && process.stdout.isTTY) {
+            console.log('  Skipped. You can install it later: npx claudewall hooks install')
+          } else {
+            console.log('  (non-interactive — skipping hook install)')
+            console.log('  Run in a real terminal, or: npx claudewall hooks install')
+          }
         }
       }
 
