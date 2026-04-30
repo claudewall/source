@@ -39,6 +39,18 @@ export async function ensureIndexes(): Promise<void> {
     await Promise.all([
       d.collection('lessons').createIndex({ authorId: 1, createdAt: -1 }),
       d.collection('lessons').createIndex({ tags: 1 }),
+      // recall_history: a per-user audit trail of recall queries (web +
+      // agent). The TTL keeps the collection bounded — operational data
+      // not lessons themselves.
+      d
+        .collection('recall_history')
+        .createIndex({ authorId: 1, createdAt: -1 }),
+      d
+        .collection('recall_history')
+        .createIndex(
+          { createdAt: 1 },
+          { expireAfterSeconds: 60 * 60 * 24 * 30 },
+        ),
     ])
   })().catch((err) => {
     indexesPromise = null

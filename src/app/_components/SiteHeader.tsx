@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { auth, signIn, signOut } from '@/lib/auth'
+import RecallPopover from './RecallPopover'
 
 async function signInGitHub() {
   'use server'
@@ -103,15 +104,19 @@ export default async function SiteHeader() {
       </Link>
 
       <nav className="flex items-center gap-2 sm:gap-3 text-sm flex-none">
-        <Link
-          href="/l/recall"
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
-          aria-label="Recall a lesson"
-          title="Recall"
-        >
-          <SearchIcon className="w-4 h-4" />
-          <span className="hidden sm:inline">Recall</span>
-        </Link>
+        {user ? (
+          <RecallPopover />
+        ) : (
+          <Link
+            href="/l/recall"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
+            aria-label="Recall a lesson"
+            title="Recall"
+          >
+            <SearchIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Recall</span>
+          </Link>
+        )}
         <a
           href="https://github.com/claudewall"
           target="_blank"

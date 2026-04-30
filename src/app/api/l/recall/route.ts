@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { db } from '@/lib/mongo'
+import { db, ensureIndexes } from '@/lib/mongo'
 import { embedText } from '@/lib/embedding'
 import { auth } from '@/lib/auth'
 
@@ -9,50 +9,85 @@ const NUM_CANDIDATES = 50
 const FETCH_LIMIT = 5
 const MIN_SCORE = 0.65
 const MAX_RESULTS = 3
+const TRIGGER_COMMAND_MAX = 1000
+const TRIGGER_ERROR_MAX = 1000
+const PROJECT_MAX = 100
+const SESSION_ID_MAX = 100
+const CWD_MAX = 400
 
-// Auth flexibly: Bearer token (CLI calls) or session cookie (browser calls).
-// Either way we pin the search to the caller's own authorId.
-async function callerAuthorId(req: NextRequest): Promise<ObjectId | null> {
+type AgentContext = {
+  sessionId?: string
+  cwd?: string
+  project?: string
+  triggerCommand?: string
+  triggerError?: string
+}
+
+type Source = 'agent' | 'web'
+
+type AuthResult =
+  | { authorId: ObjectId; source: Source }
+  | { authorId: null; source: Source }
+
+// Auth flexibly: Bearer = agent (CLI/hook), session cookie = web.
+async function callerAuth(req: NextRequest): Promise<AuthResult> {
   const authHeader = req.headers.get('authorization') ?? ''
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7).trim()
-    if (!token) return null
+    if (!token) return { authorId: null, source: 'agent' }
     const d = await db()
     const tokenRow = await d.collection('cli_tokens').findOne({ token })
-    if (!tokenRow) return null
+    if (!tokenRow) return { authorId: null, source: 'agent' }
     await d
       .collection('cli_tokens')
       .updateOne({ _id: tokenRow._id }, { $set: { lastUsedAt: new Date() } })
-    return tokenRow.userId as ObjectId
+    return { authorId: tokenRow.userId as ObjectId, source: 'agent' }
   }
   const session = await auth()
   const sessionUser = session?.user as { id?: string } | undefined
-  if (!sessionUser?.id) return null
-  return new ObjectId(sessionUser.id)
+  if (!sessionUser?.id) return { authorId: null, source: 'web' }
+  return { authorId: new ObjectId(sessionUser.id), source: 'web' }
 }
 
-export async function GET(req: NextRequest) {
-  const authorId = await callerAuthorId(req)
-  if (!authorId) {
-    return Response.json({ error: 'unauthorized' }, { status: 401 })
+function clampStr(v: unknown, max: number): string {
+  if (typeof v !== 'string') return ''
+  return v.slice(0, max)
+}
+
+function sanitizeAgentContext(raw: unknown): AgentContext | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const ctx: AgentContext = {
+    sessionId: clampStr(r.sessionId, SESSION_ID_MAX) || undefined,
+    cwd: clampStr(r.cwd, CWD_MAX) || undefined,
+    project: clampStr(r.project, PROJECT_MAX) || undefined,
+    triggerCommand:
+      clampStr(r.triggerCommand, TRIGGER_COMMAND_MAX) || undefined,
+    triggerError: clampStr(r.triggerError, TRIGGER_ERROR_MAX) || undefined,
   }
+  // Drop the entire context if every field is empty (no signal to record).
+  const hasAny = Object.values(ctx).some((v) => Boolean(v))
+  return hasAny ? ctx : null
+}
 
-  const q = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 500)
-  if (!q) return Response.json({ q: '', lessons: [] })
-
+async function runRecall(
+  authorId: ObjectId,
+  q: string,
+): Promise<
+  | { ok: true; lessons: Array<Record<string, unknown>> }
+  | { ok: false; status: number; error: string }
+> {
   const queryVec = await embedText(q)
   if (!queryVec) {
-    return Response.json(
-      {
-        error:
-          'Recall unavailable — embedding service is down or VOYAGE_API_KEY is not set.',
-      },
-      { status: 503 },
-    )
+    return {
+      ok: false,
+      status: 503,
+      error:
+        'Recall unavailable — embedding service is down or VOYAGE_API_KEY is not set.',
+    }
   }
 
   const d = await db()
-
   let raw: Array<Record<string, unknown>> = []
   try {
     raw = await d
@@ -88,13 +123,12 @@ export async function GET(req: NextRequest) {
       .toArray()
   } catch (err) {
     console.warn('lessons recall failed:', (err as Error).message)
-    return Response.json(
-      {
-        error:
-          'Recall index not configured. Create lessons_vector_index in Atlas Search → Vector Search.',
-      },
-      { status: 503 },
-    )
+    return {
+      ok: false,
+      status: 503,
+      error:
+        'Recall index not configured. Create lessons_vector_index in Atlas Search → Vector Search.',
+    }
   }
 
   const filtered = raw
@@ -105,5 +139,102 @@ export async function GET(req: NextRequest) {
       return { ...o, _id: o._id.toString() }
     })
 
-  return Response.json({ q, lessons: filtered })
+  return { ok: true, lessons: filtered }
+}
+
+async function writeHistory(args: {
+  authorId: ObjectId
+  source: Source
+  query: string
+  lessons: Array<Record<string, unknown>>
+  agentContext: AgentContext | null
+}): Promise<void> {
+  try {
+    await ensureIndexes()
+    const d = await db()
+    const resultIds = args.lessons
+      .map((l) => {
+        try {
+          return new ObjectId(String((l as { _id: string })._id))
+        } catch {
+          return null
+        }
+      })
+      .filter((v): v is ObjectId => v !== null)
+    const topScore =
+      args.lessons.length > 0
+        ? Math.max(
+            ...args.lessons.map(
+              (l) => (l as { score?: number }).score ?? 0,
+            ),
+          )
+        : null
+    await d.collection('recall_history').insertOne({
+      authorId: args.authorId,
+      source: args.source,
+      query: args.query.slice(0, 500),
+      resultIds,
+      resultCount: args.lessons.length,
+      topScore,
+      agentContext:
+        args.source === 'agent' ? args.agentContext ?? null : null,
+      createdAt: new Date(),
+    })
+  } catch (err) {
+    // History writes should never break the recall response.
+    console.warn('recall_history write failed:', (err as Error).message)
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const { authorId, source } = await callerAuth(req)
+  if (!authorId) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  const q = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 500)
+  if (!q) return Response.json({ q: '', lessons: [] })
+
+  const result = await runRecall(authorId, q)
+  if (!result.ok) {
+    return Response.json({ error: result.error }, { status: result.status })
+  }
+  await writeHistory({
+    authorId,
+    source,
+    query: q,
+    lessons: result.lessons,
+    agentContext: null,
+  })
+  return Response.json({ q, lessons: result.lessons })
+}
+
+export async function POST(req: NextRequest) {
+  const { authorId, source } = await callerAuth(req)
+  if (!authorId) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  let body: { q?: unknown; agentContext?: unknown }
+  try {
+    body = await req.json()
+  } catch {
+    return Response.json({ error: 'invalid json' }, { status: 400 })
+  }
+
+  const q = clampStr(body.q, 500).trim()
+  if (!q) return Response.json({ q: '', lessons: [] })
+
+  const result = await runRecall(authorId, q)
+  if (!result.ok) {
+    return Response.json({ error: result.error }, { status: result.status })
+  }
+  await writeHistory({
+    authorId,
+    source,
+    query: q,
+    lessons: result.lessons,
+    agentContext: sanitizeAgentContext(body.agentContext),
+  })
+  return Response.json({ q, lessons: result.lessons })
 }

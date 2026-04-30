@@ -12,8 +12,10 @@ type RecallResponse = {
     _id: string
     title: string
     trigger: string
-    mistake: string
-    correction: string
+    detection?: string
+    mistake?: string
+    replacement?: string
+    verification?: string
     tags?: string[]
     weight?: number
     score?: number
@@ -118,9 +120,11 @@ export default async function RecallPage({
               <p className="text-xs text-neutral-500 italic">
                 when: {l.trigger}
               </p>
-              <p className="text-sm text-neutral-700 line-clamp-2">
-                <span className="text-neutral-500">do:</span> {l.correction}
-              </p>
+              {l.replacement && (
+                <p className="text-sm text-neutral-700 line-clamp-2">
+                  <span className="text-neutral-500">do:</span> {l.replacement}
+                </p>
+              )}
               {l.tags && l.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {l.tags.map((t) => (
