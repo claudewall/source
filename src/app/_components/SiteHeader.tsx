@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { auth, signIn, signOut } from '@/lib/auth'
-import RecallPopover from './RecallPopover'
 
 async function signInGitHub() {
   'use server'
@@ -9,7 +8,7 @@ async function signInGitHub() {
 
 async function signOutAction() {
   'use server'
-  await signOut({ redirectTo: '/l' })
+  await signOut({ redirectTo: '/' })
 }
 
 async function getStars(): Promise<number | null> {
@@ -63,24 +62,6 @@ function SignOutIcon({ className }: { className?: string }) {
   )
 }
 
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.35-4.35" />
-    </svg>
-  )
-}
-
 export default async function SiteHeader() {
   const session = await auth()
   const user = session?.user as
@@ -90,7 +71,7 @@ export default async function SiteHeader() {
 
   return (
     <header className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 border-b border-neutral-200/70 bg-[#faf6ec]">
-      <Link href="/l" className="flex items-center gap-2 min-w-0">
+      <Link href="/" className="flex items-center gap-2 min-w-0">
         <img
           src="/logo.png"
           alt="claudewall"
@@ -104,18 +85,21 @@ export default async function SiteHeader() {
       </Link>
 
       <nav className="flex items-center gap-2 sm:gap-3 text-sm flex-none">
-        {user ? (
-          <RecallPopover />
-        ) : (
-          <Link
-            href="/l/recall"
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
-            aria-label="Recall a lesson"
-            title="Recall"
-          >
-            <SearchIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">Recall</span>
-          </Link>
+        {user && (
+          <>
+            <Link
+              href="/l"
+              className="px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
+            >
+              Lessons
+            </Link>
+            <Link
+              href="/r"
+              className="px-2.5 sm:px-3 py-1.5 rounded-md text-neutral-700 hover:bg-neutral-200/70 transition"
+            >
+              Recalls
+            </Link>
+          </>
         )}
         <a
           href="https://github.com/claudewall"
