@@ -13,6 +13,8 @@ if (!cmd || cmd === 'init') {
   require('../src/hook.js')
 } else if (cmd === 'hooks') {
   require('../src/hooks-install.js')
+} else if (cmd === 'uninstall') {
+  require('../src/uninstall.js')
 } else if (cmd === '-h' || cmd === '--help' || cmd === 'help') {
   console.log('Usage:')
   console.log('  npx claudewall init')
@@ -31,6 +33,13 @@ if (!cmd || cmd === 'init') {
   console.log('  npx claudewall hooks [install|uninstall|status]')
   console.log('      Manage the Claude Code PostToolUse hook that auto-')
   console.log('      injects matching past lessons after any Bash failure.')
+  console.log('')
+  console.log('  npx claudewall uninstall [--keep-config]')
+  console.log('      Remove everything `init` created: slash commands, the')
+  console.log('      PostToolUse hook, and ~/.claudewall config + token.')
+  console.log('      Pass --keep-config to preserve the auth token.')
+  console.log('      Does NOT remove the npm binary — use `npm uninstall -g')
+  console.log('      claudewall` for that.')
   console.log('')
   console.log('  npx claudewall hook recall')
   console.log('      Internal: invoked by the Claude Code hook. Reads the')
