@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
 
-const HOOK_COMMAND = 'npx claudewall@latest hook recall'
+const HOOK_COMMAND = 'claudewall hook recall'
 const SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 
 function readSettings() {
@@ -32,7 +32,7 @@ function isClaudewallEntry(entry) {
     (h) =>
       h &&
       typeof h.command === 'string' &&
-      /\bclaudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command),
+      /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command),
   )
 }
 
@@ -57,7 +57,7 @@ function install() {
     (h) =>
       h &&
       typeof h.command === 'string' &&
-      /\bclaudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command),
+      /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command),
   )
   if (already) {
     console.log('claudewall PostToolUse hook is already installed.')
@@ -98,7 +98,7 @@ function uninstall() {
         !(
           h &&
           typeof h.command === 'string' &&
-          /\bclaudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command)
+          /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command)
         ),
     )
     removed += before - entry.hooks.length

@@ -103,6 +103,21 @@ async function main() {
         console.log(`✓ Installed ${cmd.label} at ${dstPath}`)
       }
 
+      // Global install so the PostToolUse hook resolves `claudewall`
+      // directly without paying npx's 2–4s fetch cost on every Bash call.
+      // (Hooks have a startup-time budget; npx-based hooks were exceeding
+      // it on Windows.)
+      console.log('Installing claudewall globally so the hook starts fast…')
+      const ginst = require('node:child_process').spawnSync(
+        'npm',
+        ['install', '-g', 'claudewall@latest'],
+        { stdio: 'inherit', shell: true },
+      )
+      if (ginst.status !== 0) {
+        console.log('  (warn) global install failed; hook will not work')
+        console.log('  fix: npm install -g claudewall@latest')
+      }
+
       try {
         require('./hooks-install.js').install()
       } catch (err) {

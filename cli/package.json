@@ -1,6 +1,6 @@
 {
   "name": "claudewall",
-  "version": "1.3.5",
+  "version": "1.4.0",
   "description": "A personal lessons-learned archive for Claude Code — capture gotchas with /lesson, retrieve them across sessions with /recall, semantic-searched against your prior misses.",
   "bin": {
     "claudewall": "./bin/claudewall.js"
