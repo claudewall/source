@@ -36,7 +36,7 @@ For each candidate, output **exactly** this structure. Separate consecutive less
 
 **Replacement:** <the concrete, literal shape of the correct action. If the wrong action was a bash command, write the correct command. If it was a JSON shape, write the correct shape. "Do X instead" is not enough — show what X looks like as a pattern future-you can emit directly.>
 
-**Verification:** <optional post-action self-check: a concrete thing future-you can grep, count, or test on the *executed* result to confirm the lesson was honored. Omit if the lesson doesn't have a clean verification. Example: "after running, grep the bash command text for 'Bearer'; if found, you violated the lesson.">
+**Verification:** <**Required whenever the lesson has any observable post-action signal** — a concrete thing future-you can grep, count, diff, or test on the *executed* result to confirm the lesson was honored. Omit ONLY if there is genuinely no observable signal (rare). Before omitting, ask yourself: "could I grep / count / diff / regex-test something on the result to know the lesson was honored?" If yes, write the verification — don't fall back on "it's optional." Example: "after running, grep the bash command text for 'Bearer'; if found, you violated the lesson.">
 
 **Tags:** <2-5 lowercase, hyphenated, ^[a-z0-9][a-z0-9-]*$>
 **Weight:** <1-5; 5 = save me from this every session, 1 = rare edge case worth remembering>
@@ -95,7 +95,7 @@ EOF
 
 - Single-quoted heredoc disables shell expansion — `$VAR` patterns inside the JSON are sent verbatim
 - Properly escape `"` and `\` in JSON string values
-- Omit `verification` if you don't have a clean post-action check
+- Omit `verification` ONLY if there is genuinely no observable post-action signal you could check. Most lessons have one — re-read the verification instruction in step 2 before you decide to omit. If you can grep / count / diff / regex-test something on the executed result, write the verification.
 - Omit `model` if unknown
 - The CLI auto-detects the project (git remote → `owner/repo`; otherwise cwd basename) and folds it into the body before POST. Override only if you need to redact: include `"project": "<override>"` in the JSON
 - The CLI loads the auth token from `~/.claudewall/config.json` at runtime — **do not** add an `Authorization` header, **do not** invoke `curl` directly
