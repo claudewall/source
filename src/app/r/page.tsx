@@ -16,13 +16,21 @@ type RecallRow = {
   _id: ObjectId
   source: 'agent' | 'web'
   query?: string
+  resultIds?: ObjectId[]
   resultCount?: number
   topScore?: number | null
   agentContext?: {
     project?: string
     triggerCommand?: string
+    triggerError?: string
   } | null
   createdAt?: Date
+}
+
+type LessonHydrated = {
+  _id: string
+  title: string
+  weight?: number
 }
 
 async function signInGitHub() {
@@ -41,11 +49,6 @@ function timeAgo(d: Date): string {
   return `${days}d`
 }
 
-function truncate(s: string, n: number): string {
-  if (s.length <= n) return s
-  return s.slice(0, n) + '…'
-}
-
 function FilterPill({
   label,
   active,
@@ -59,7 +62,7 @@ function FilterPill({
     <Link
       href={href}
       className={
-        'px-3 py-1 rounded-full text-xs border transition ' +
+        'px-2.5 py-0.5 rounded-full text-xs border transition shrink-0 ' +
         (active
           ? 'bg-neutral-900 text-white border-neutral-900'
           : 'bg-white text-neutral-700 border-neutral-300 hover:border-neutral-500')
@@ -67,6 +70,23 @@ function FilterPill({
     >
       {label}
     </Link>
+  )
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-[10px] uppercase tracking-wider text-neutral-500 shrink-0">
+        {label}
+      </span>
+      {children}
+    </div>
   )
 }
 
@@ -148,10 +168,12 @@ export default async function RecallsPage({
         _id: 1,
         source: 1,
         query: 1,
+        resultIds: 1,
         resultCount: 1,
         topScore: 1,
         'agentContext.project': 1,
         'agentContext.triggerCommand': 1,
+        'agentContext.triggerError': 1,
         createdAt: 1,
       })
       .toArray()) as unknown as RecallRow[]
@@ -166,6 +188,43 @@ export default async function RecallsPage({
     // empty state
   }
 
+  // Hydrate just the FIRST lesson per row (highest-scoring, by recall API
+  // ordering). Card shows only that one — click into /r/:id for the rest.
+  const topLessonIds = new Set<string>()
+  for (const r of rows) {
+    const ids = r.resultIds ?? []
+    if (ids.length > 0) topLessonIds.add(ids[0].toString())
+  }
+  let lessonsById: Record<string, LessonHydrated> = {}
+  if (topLessonIds.size > 0) {
+    try {
+      const d = await db()
+      const lessons = await d
+        .collection('lessons')
+        .find(
+          {
+            _id: {
+              $in: Array.from(topLessonIds).map((s) => new ObjectId(s)),
+            },
+          },
+          { projection: { title: 1, weight: 1 } },
+        )
+        .toArray()
+      lessonsById = Object.fromEntries(
+        lessons.map((l) => [
+          (l._id as ObjectId).toString(),
+          {
+            _id: (l._id as ObjectId).toString(),
+            title: String((l as { title?: string }).title ?? '(untitled)'),
+            weight: (l as { weight?: number }).weight,
+          },
+        ]),
+      )
+    } catch {
+      // ignore
+    }
+  }
+
   const baseQS = {
     source: source !== 'all' ? source : undefined,
     range: range !== '7d' ? range : undefined,
@@ -177,20 +236,18 @@ export default async function RecallsPage({
     <main className="flex-1 bg-[#faf6ec] text-neutral-900">
       <SiteHeader />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5 pb-2">
+      <div className="px-4 sm:px-6 pt-5 pb-2">
         <div className="flex items-baseline gap-3 flex-wrap">
           <h1 className="font-serif text-3xl">Recalls</h1>
           <p className="text-sm text-neutral-600">
-            Audit trail of what's been queried — click any row for full
+            Audit trail of what's been queried — click a card for full
             detail.
           </p>
         </div>
 
-        <div className="mt-5 space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
-              Source
-            </span>
+        {/* Filters: stack vertically on mobile, single row on md+. */}
+        <div className="mt-4 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-5 md:gap-y-2">
+          <FilterGroup label="Source">
             <FilterPill
               label="agent"
               active={source === 'agent'}
@@ -206,12 +263,9 @@ export default async function RecallsPage({
               active={source === 'all'}
               href={buildHref(baseQS, { source: undefined })}
             />
-          </div>
+          </FilterGroup>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
-              Range
-            </span>
+          <FilterGroup label="Range">
             {(['24h', '7d', '30d'] as const).map((r) => (
               <FilterPill
                 key={r}
@@ -222,29 +276,23 @@ export default async function RecallsPage({
                 })}
               />
             ))}
-          </div>
+          </FilterGroup>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
-              Show
-            </span>
+          <FilterGroup label="Show">
             <FilterPill
               label="all"
               active={!nomatchOnly}
               href={buildHref(baseQS, { nomatch: undefined })}
             />
             <FilterPill
-              label="no-match only"
+              label="no-match"
               active={nomatchOnly}
               href={buildHref(baseQS, { nomatch: '1' })}
             />
-          </div>
+          </FilterGroup>
 
           {projects.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
-                Project
-              </span>
+            <FilterGroup label="Project">
               <FilterPill
                 label="all"
                 active={!project}
@@ -258,88 +306,135 @@ export default async function RecallsPage({
                   href={buildHref(baseQS, { project: p })}
                 />
               ))}
-            </div>
+            </FilterGroup>
           )}
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-10">
-        {rows.length === 0 ? (
-          <div className="text-center py-16 text-neutral-500 space-y-2">
-            <p className="font-serif text-xl">No recalls match.</p>
-            <p className="text-sm">
-              Either nothing's been recalled in this window, or the filters
-              are too narrow.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2 mt-6">
-            {rows.map((r) => {
-              const isAgent = r.source === 'agent'
-              const summary =
-                r.agentContext?.triggerCommand ?? r.query ?? '(empty)'
-              const proj = r.agentContext?.project
-              const noMatch = (r.resultCount ?? 0) === 0
-              return (
-                <li key={r._id.toString()} className="min-w-0">
-                  <Link
-                    href={`/r/${r._id.toString()}`}
-                    className={
-                      'block rounded-xl shadow-sm hover:shadow-md transition border min-w-0 overflow-hidden ' +
-                      (noMatch
-                        ? 'border-amber-200 bg-amber-50/40 hover:bg-amber-50/60'
-                        : 'border-transparent bg-white hover:bg-neutral-50')
-                    }
+      {rows.length === 0 ? (
+        <div className="text-center py-16 text-neutral-500 space-y-2 px-4">
+          <p className="font-serif text-xl">No recalls match.</p>
+          <p className="text-sm">
+            Either nothing's been recalled in this window, or the filters
+            are too narrow.
+          </p>
+        </div>
+      ) : (
+        <div className="p-4 sm:p-6 columns-1 sm:columns-2 lg:columns-3 gap-4">
+          {rows.map((r) => {
+            const isAgent = r.source === 'agent'
+            const command =
+              r.agentContext?.triggerCommand ?? r.query ?? '(empty)'
+            const error = r.agentContext?.triggerError ?? ''
+            const proj = r.agentContext?.project
+            const noMatch = (r.resultCount ?? 0) === 0
+            const topId = r.resultIds?.[0]?.toString()
+            const topLesson = topId ? lessonsById[topId] : undefined
+            const moreCount = (r.resultCount ?? 0) - (topLesson ? 1 : 0)
+            return (
+              <Link
+                key={r._id.toString()}
+                href={`/r/${r._id.toString()}`}
+                className={
+                  'group block mb-4 break-inside-avoid rounded-2xl shadow-sm hover:shadow-md transition border min-w-0 overflow-hidden ' +
+                  (noMatch
+                    ? 'border-amber-200 bg-amber-50/40 hover:bg-amber-50/70'
+                    : 'border-transparent bg-white')
+                }
+              >
+                {/* Header */}
+                <div className="px-5 pt-4 pb-2 flex items-baseline gap-2 text-xs text-neutral-600 min-w-0">
+                  <span aria-hidden className="shrink-0">
+                    {isAgent ? '🤖' : '👤'}
+                  </span>
+                  <span className="shrink-0">
+                    {r.createdAt ? timeAgo(r.createdAt) : ''}
+                  </span>
+                  {proj && (
+                    <>
+                      <span className="text-neutral-300 shrink-0">·</span>
+                      <span className="font-mono truncate min-w-0">
+                        {proj}
+                      </span>
+                    </>
+                  )}
+                  <span className="ml-auto shrink-0">
+                    {noMatch ? (
+                      <span className="text-amber-700">⚠ no match</span>
+                    ) : (
+                      <>
+                        {r.resultCount} hit
+                        {r.resultCount === 1 ? '' : 's'}
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                <div className="px-5 pb-4 space-y-3">
+                  {/* Command / query */}
+                  <pre
+                    className="bg-neutral-900 text-neutral-100 text-xs rounded-md px-3 py-2 font-mono whitespace-pre-wrap break-words overflow-hidden"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                    }}
                   >
-                    <div className="px-4 py-3 min-w-0">
-                      <div className="flex items-baseline gap-2 text-xs text-neutral-600 min-w-0">
-                        <span aria-hidden className="shrink-0">
-                          {isAgent ? '🤖' : '👤'}
-                        </span>
-                        <span className="shrink-0">
-                          {r.createdAt ? timeAgo(r.createdAt) : ''}
-                        </span>
-                        {proj && (
-                          <>
-                            <span className="text-neutral-300 shrink-0">·</span>
-                            <span className="font-mono truncate min-w-0">
-                              {proj}
-                            </span>
-                          </>
-                        )}
-                        <span className="ml-auto shrink-0">
-                          {noMatch ? (
-                            <span className="text-amber-700">⚠ no match</span>
-                          ) : (
-                            <>
-                              {r.resultCount} hit
-                              {r.resultCount === 1 ? '' : 's'}
-                              {typeof r.topScore === 'number' && (
-                                <span className="text-neutral-400 ml-2">
-                                  {r.topScore.toFixed(2)}
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </span>
-                        <span
-                          className="text-neutral-300 shrink-0"
-                          aria-hidden
-                        >
-                          →
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-800 font-mono mt-1 truncate min-w-0">
-                        {isAgent ? truncate(summary, 120) : `“${truncate(summary, 120)}”`}
-                      </p>
+                    {isAgent ? '$ ' + command : `“${r.query ?? ''}”`}
+                  </pre>
+
+                  {/* Error preview (agent only, when present) */}
+                  {isAgent && error && (
+                    <pre
+                      className="text-[11px] text-neutral-700 font-mono whitespace-pre-wrap break-words overflow-hidden leading-snug"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                      }}
+                    >
+                      {error}
+                    </pre>
+                  )}
+
+                  {/* Top match or no-match callout */}
+                  {noMatch ? (
+                    <div className="text-xs text-amber-800">
+                      ⚠ No lesson matched ·{' '}
+                      <span className="underline decoration-amber-300 underline-offset-2 group-hover:decoration-amber-500">
+                        capture next time →
+                      </span>
                     </div>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
+                  ) : (
+                    topLesson && (
+                      <div className="border-t border-neutral-100 pt-3 flex items-baseline gap-2 min-w-0">
+                        <span className="text-neutral-400 font-mono text-[11px] shrink-0">
+                          {'★'.repeat(topLesson.weight ?? 3)}
+                          {'·'.repeat(5 - (topLesson.weight ?? 3))}
+                        </span>
+                        <span className="text-sm flex-1 truncate min-w-0">
+                          {topLesson.title}
+                        </span>
+                        {typeof r.topScore === 'number' && (
+                          <span className="text-[11px] font-mono text-neutral-400 shrink-0">
+                            {r.topScore.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  )}
+
+                  {!noMatch && moreCount > 0 && (
+                    <div className="text-[11px] text-neutral-500">
+                      + {moreCount} more
+                    </div>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </main>
   )
 }
