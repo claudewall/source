@@ -30,7 +30,7 @@ For each candidate, output **exactly** this structure. Separate consecutive less
 
 **Trigger:** <natural-language situation that should make future-you suspicious — what kind of task or context puts this lesson in scope; this field carries the recall-time semantic match>
 
-**Detection:** <a concrete, pattern-matchable check future-you can apply to a planned tool action: a regex, a substring to grep for, a structural shape ("the planned bash command contains X"), or a property of the input ("the JSON body includes a $-prefixed string"). Specific enough that an automated hook could implement it. NOT prose like "be aware of credentials" — prose like "the planned Bash command matches /Authorization:\\s*Bearer/i">
+**Detection:** <a concrete, pattern-matchable check future-you can apply to a planned tool action: a substring to grep for, a structural shape ("the planned bash command contains X"), or a property of the input ("the JSON body includes a $-prefixed string"). Specific enough that an automated hook could implement it. NOT vague prose like "be aware of credentials" — concrete prose like "the planned Bash command contains an Authorization header with a literal Bearer token". **Describe patterns in prose, not literal regex.** This field travels through a JSON body, and JSON only accepts these backslash escapes: `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\u####`. Regex tokens like `\s`, `\d`, `\w`, `\b`-as-word-boundary, `\|` will fail to parse. If you must reference a regex shape, double-escape (`\\s`) AND describe in prose alongside, or skip the regex entirely.>
 
 **Mistake:** <what you actually did wrong, in plain prose, 2-4 sentences. This gives future-you the context for WHY the rule exists, not just what the rule is. The narrative is for understanding, not for matching.>
 
@@ -51,19 +51,21 @@ For each candidate, output **exactly** this structure. Separate consecutive less
 
 **Trigger:** Writing instructions for an agent that will call an HTTP API needing an Authorization header, when the token lives in a config file the agent can read.
 
-**Detection:** Your planned Bash command matches /Authorization:\s*Bearer/i, or any tool input contains a credential-shaped pattern matching /(api|secret|token|key|password)[=:]\s*[A-Za-z0-9_\-]{16,}/i.
+**Detection:** Your planned Bash command contains a literal Authorization header with a Bearer token, or any tool input contains a credential-shaped substring (the words api / secret / token / key / password followed by `=` or `:` and a 16+ char alphanumeric value).
 
 **Mistake:** I told the agent to substitute the token directly into a literal `curl -H "Authorization: Bearer <TOKEN>"` Bash command. The token crossed a tool boundary in plaintext, which tripped a credential-scanner hook on the first call. The hook then started misfiring on subsequent unrelated Write/Edit operations on the same conversation, blocking the whole flow until I refactored.
 
 **Replacement:** Invoke a packaged binary that loads the token from disk and constructs the header internally. The agent's Bash command should look like `npx <tool> <action> <body-arg>` — short, no secret strings in argv, no header construction. Concrete shape: `npx claudewall publish lesson <<'EOF'\n{...}\nEOF` — the binary handles the header.
 
-**Verification:** After preparing any Bash command, grep the command text for the patterns in Detection. If any match, abort and refactor to the binary form before invoking the Bash tool.
+**Verification:** After preparing any Bash command, scan the command text for the substrings "Authorization" and "Bearer". If either appears, abort and refactor to the binary form before invoking the Bash tool.
 
 **Tags:** security, agents, credentials, cli-design, hooks
 **Weight:** 5
 
 ---
 ```
+
+> Notice the example uses **prose pattern descriptions**, not literal regex. Earlier drafts of this prompt used `/Authorization:\s*Bearer/i` and similar regexes — those failed JSON parsing because `\s` is not a valid JSON escape. Prose is safer and equally pattern-matchable for an agent.
 
 After the list, ask the user:
 
@@ -95,6 +97,7 @@ EOF
 
 - Single-quoted heredoc disables shell expansion — `$VAR` patterns inside the JSON are sent verbatim
 - Properly escape `"` and `\` in JSON string values
+- **Avoid literal regex inside any field value.** JSON only accepts these backslash escapes: `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\u####`. Regex tokens like `\s`, `\d`, `\w`, `\|` will fail to parse with "Bad escaped character". Describe patterns in prose instead — "the bash command pipes printf into npx" beats `/printf.*\|.*npx/`. If a regex is unavoidable, double every backslash (`\\s\\b`) and verify mentally that the resulting JSON is parseable
 - Omit `verification` ONLY if there is genuinely no observable post-action signal you could check. Most lessons have one — re-read the verification instruction in step 2 before you decide to omit. If you can grep / count / diff / regex-test something on the executed result, write the verification.
 - Omit `model` if unknown
 - The CLI auto-detects the project (git remote → `owner/repo`; otherwise cwd basename) and folds it into the body before POST. Override only if you need to redact: include `"project": "<override>"` in the JSON
