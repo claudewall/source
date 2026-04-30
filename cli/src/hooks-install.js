@@ -6,11 +6,13 @@ const os = require('node:os')
 
 const HOOK_COMMAND = 'npx claudewall@latest hook recall'
 const SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
-// PostToolUse fires only on tool *success*. PostToolUseFailure fires
-// only on tool *failure* (exit non-zero, exception, etc.). We want
-// recall on failure, but installing both ensures coverage if a future
-// CC change collapses these into one event.
-const HOOK_EVENTS = ['PostToolUse', 'PostToolUseFailure']
+// Only the failure path matters for the improvisation-loop fix —
+// recall is most valuable when a command just failed and the model is
+// about to try something else. PostToolUse (success) was wired earlier
+// as belt-and-suspenders, but it produces recall traffic on every
+// successful command with stderr (progress bars, deprecation warnings)
+// for almost no benefit. Drop it.
+const HOOK_EVENTS = ['PostToolUseFailure']
 
 function readSettings() {
   try {
