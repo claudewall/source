@@ -9,6 +9,10 @@ if (!cmd || cmd === 'init') {
   require('../src/publish.js')
 } else if (cmd === 'recall') {
   require('../src/recall.js')
+} else if (cmd === 'hook') {
+  require('../src/hook.js')
+} else if (cmd === 'hooks') {
+  require('../src/hooks-install.js')
 } else if (cmd === '-h' || cmd === '--help' || cmd === 'help') {
   console.log('Usage:')
   console.log('  npx claudewall init')
@@ -23,6 +27,15 @@ if (!cmd || cmd === 'init') {
   console.log('  npx claudewall recall "<query>"')
   console.log("      Pull up to 3 of your past lessons most relevant to a")
   console.log('      free-text situation. Output is Markdown to stdout.')
+  console.log('')
+  console.log('  npx claudewall hooks [install|uninstall|status]')
+  console.log('      Manage the Claude Code PostToolUse hook that auto-')
+  console.log('      injects matching past lessons after any Bash failure.')
+  console.log('')
+  console.log('  npx claudewall hook recall')
+  console.log('      Internal: invoked by the Claude Code hook. Reads the')
+  console.log('      hook payload on stdin, queries recall on tool failure,')
+  console.log('      writes matching lessons to stdout for context injection.')
   process.exit(0)
 } else {
   console.error(`Unknown command: ${cmd}`)
