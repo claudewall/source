@@ -138,17 +138,33 @@ function status() {
   }
 }
 
-const sub = process.argv[3]
-try {
-  if (sub === 'install') install()
-  else if (sub === 'uninstall' || sub === 'remove') uninstall()
-  else if (sub === 'status' || !sub) status()
-  else {
-    console.error(`Unknown hooks subcommand: ${sub}`)
-    console.error('Try: npx claudewall hooks [install|uninstall|status]')
+module.exports = { install, uninstall, status, SETTINGS_PATH, HOOK_COMMAND }
+
+function isEntryPoint() {
+  // Invoked via `claudewall hooks ...` from bin/claudewall.js? Then the
+  // require chain is bin → this module. Treat any direct require from the
+  // bin shim as entry-point execution.
+  try {
+    const parent = require.main && require.main.filename
+    return Boolean(parent && parent.endsWith('claudewall.js'))
+  } catch {
+    return false
+  }
+}
+
+if (isEntryPoint() && process.argv[2] === 'hooks') {
+  const sub = process.argv[3]
+  try {
+    if (sub === 'install') install()
+    else if (sub === 'uninstall' || sub === 'remove') uninstall()
+    else if (sub === 'status' || !sub) status()
+    else {
+      console.error(`Unknown hooks subcommand: ${sub}`)
+      console.error('Try: npx claudewall hooks [install|uninstall|status]')
+      process.exit(1)
+    }
+  } catch (err) {
+    console.error(`Error: ${err.message}`)
     process.exit(1)
   }
-} catch (err) {
-  console.error(`Error: ${err.message}`)
-  process.exit(1)
 }

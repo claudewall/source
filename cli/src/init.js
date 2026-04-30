@@ -103,8 +103,28 @@ async function main() {
         console.log(`✓ Installed ${cmd.label} at ${dstPath}`)
       }
 
+      try {
+        require('./hooks-install.js').install()
+      } catch (err) {
+        // Some versions expose install via subcommand dispatch only; fall
+        // back to spawning the helper as a child to keep init resilient.
+        try {
+          require('node:child_process').spawnSync(
+            process.execPath,
+            [path.join(__dirname, '..', 'bin', 'claudewall.js'), 'hooks', 'install'],
+            { stdio: 'inherit' },
+          )
+        } catch {
+          console.log(
+            '  (skip) could not auto-install PostToolUse hook: ' + err.message,
+          )
+          console.log('  install it later: npx claudewall hooks install')
+        }
+      }
+
       console.log('')
       console.log('All set. Run /lesson to capture and /recall to retrieve.')
+      console.log('Bash failures will auto-pull your matching past lessons.')
       return
     }
   }

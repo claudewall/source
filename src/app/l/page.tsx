@@ -32,24 +32,38 @@ export default async function LessonsPage({
     return (
       <main className="flex-1 bg-[#faf6ec] text-neutral-900">
         <SiteHeader />
-        <div className="max-w-xl mx-auto p-10 text-center space-y-6">
-          <h1 className="font-serif text-3xl">Lessons</h1>
-          <p className="text-neutral-700">
-            A personal archive of gotchas, dead-ends, and corrected
-            assumptions captured from your Claude Code sessions — searchable
-            by similar situations across future sessions.
-          </p>
-          <p className="text-sm text-neutral-600">
-            Sign in to view your lessons, capture new ones with{' '}
-            <code className="bg-neutral-100 px-1.5 py-0.5 rounded font-mono">
-              /lesson
-            </code>
-            , and recall relevant ones with{' '}
-            <code className="bg-neutral-100 px-1.5 py-0.5 rounded font-mono">
-              /recall
-            </code>
-            .
-          </p>
+        <div className="max-w-xl mx-auto p-10 text-center space-y-8">
+          <div className="space-y-4">
+            <h1 className="font-serif text-3xl">Lessons</h1>
+            <p className="text-neutral-700">
+              A personal archive of gotchas, dead-ends, and corrected
+              assumptions captured from your Claude Code sessions —
+              searchable by similar situations across future sessions.
+            </p>
+          </div>
+
+          <div className="space-y-3 text-left bg-white rounded-2xl shadow-sm p-6">
+            <p className="font-serif text-lg text-center">
+              One command, then sign in below
+            </p>
+            <pre className="bg-neutral-900 text-neutral-100 text-sm rounded-lg px-4 py-3 overflow-x-auto font-mono">
+              npx claudewall init
+            </pre>
+            <p className="text-xs text-neutral-600 leading-relaxed">
+              Authenticates this device, installs the{' '}
+              <code className="bg-neutral-100 px-1 py-0.5 rounded font-mono">
+                /lesson
+              </code>{' '}
+              and{' '}
+              <code className="bg-neutral-100 px-1 py-0.5 rounded font-mono">
+                /recall
+              </code>{' '}
+              slash commands, and registers a Claude Code hook that
+              auto-pulls your matching past lessons after any Bash failure
+              — so the agent stops improvising blind.
+            </p>
+          </div>
+
           <form action={signInGitHub}>
             <button className="px-5 py-2 bg-black text-white rounded-full text-sm">
               Sign in with GitHub
