@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
 
-const HOOK_COMMAND = 'claudewall hook recall'
+const HOOK_COMMAND = 'npx claudewall@latest hook recall'
 const SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 // PostToolUse fires only on tool *success*. PostToolUseFailure fires
 // only on tool *failure* (exit non-zero, exception, etc.). We want
