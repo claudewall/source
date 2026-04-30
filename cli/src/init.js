@@ -3,30 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
-const readline = require('node:readline')
 const { spawn } = require('node:child_process')
-
-function prompt(question, { defaultYes = true, nonTtyDefault } = {}) {
-  return new Promise((resolve) => {
-    if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      // Caller decides what to do when no human is available to answer.
-      // Most safety-relevant prompts should pass nonTtyDefault: false.
-      resolve(typeof nonTtyDefault === 'boolean' ? nonTtyDefault : defaultYes)
-      return
-    }
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    })
-    const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] '
-    rl.question(question + suffix, (answer) => {
-      rl.close()
-      const a = String(answer || '').trim().toLowerCase()
-      if (a === '') resolve(defaultYes)
-      else resolve(a === 'y' || a === 'yes')
-    })
-  })
-}
 
 const API = process.env.CLAUDEWALL_API || 'https://claudewall.com'
 
@@ -126,42 +103,17 @@ async function main() {
         console.log(`✓ Installed ${cmd.label} at ${dstPath}`)
       }
 
-      const hooks = require('./hooks-install.js')
-      const alreadyInstalled = hooks.isInstalled()
-      console.log('')
-      if (alreadyInstalled) {
-        console.log('✓ PostToolUse hook already installed in ~/.claude/settings.json')
-      } else {
-        console.log('Optional: install a PostToolUse hook in ~/.claude/settings.json')
-        console.log('that runs after every Bash call. On non-zero exit it queries your')
-        console.log('past lessons and injects matching ones into Claude\'s next turn.')
-        console.log('No-op on success. Uninstall any time: npx claudewall hooks uninstall')
-        const yes = await prompt('Install the hook now?', {
-          defaultYes: true,
-          // Non-TTY (CI, harness-wrapped shells, Claude Code's bang prefix)
-          // skips the install — there's no human to confirm a settings.json
-          // write. Users can opt in via `npx claudewall hooks install`.
-          nonTtyDefault: false,
-        })
-        if (yes) {
-          try {
-            hooks.install()
-          } catch (err) {
-            console.log('  (skip) hook install failed: ' + err.message)
-            console.log('  retry later: npx claudewall hooks install')
-          }
-        } else {
-          if (process.stdin.isTTY && process.stdout.isTTY) {
-            console.log('  Skipped. You can install it later: npx claudewall hooks install')
-          } else {
-            console.log('  (non-interactive — skipping hook install)')
-            console.log('  Run in a real terminal, or: npx claudewall hooks install')
-          }
-        }
+      try {
+        require('./hooks-install.js').install()
+      } catch (err) {
+        console.log('  (skip) hook install failed: ' + err.message)
+        console.log('  retry later: npx claudewall hooks install')
       }
 
       console.log('')
       console.log('All set. Run /lesson to capture and /recall to retrieve.')
+      console.log('Bash failures will auto-pull your matching past lessons.')
+      console.log('Opt out: npx claudewall hooks uninstall')
       return
     }
   }
