@@ -72,8 +72,10 @@ async function main() {
       typeof l.score === 'number' ? `  (score ${l.score.toFixed(3)})` : ''
     console.log(`### ${l.title}${score}`)
     if (l.trigger) console.log(`**Trigger:** ${l.trigger}`)
+    if (l.detection) console.log(`**Detection:** ${l.detection}`)
     if (l.mistake) console.log(`**Mistake:** ${l.mistake}`)
-    if (l.correction) console.log(`**Correction:** ${l.correction}`)
+    if (l.replacement) console.log(`**Replacement:** ${l.replacement}`)
+    if (l.verification) console.log(`**Verification:** ${l.verification}`)
     if (Array.isArray(l.tags) && l.tags.length > 0) {
       console.log(`**Tags:** ${l.tags.join(', ')}`)
     }

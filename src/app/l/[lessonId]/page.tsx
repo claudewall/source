@@ -37,10 +37,12 @@ export default async function LessonDetailPage({
 
   const title = String((lesson as { title?: string }).title ?? '')
   const trigger = String((lesson as { trigger?: string }).trigger ?? '')
+  const detection = String((lesson as { detection?: string }).detection ?? '')
   const mistake = String((lesson as { mistake?: string }).mistake ?? '')
-  const correction = String(
-    (lesson as { correction?: string }).correction ?? '',
+  const replacement = String(
+    (lesson as { replacement?: string }).replacement ?? '',
   )
+  const verification = (lesson as { verification?: string }).verification
   const tags = ((lesson as { tags?: unknown }).tags ?? []) as string[]
   const weight = Number((lesson as { weight?: number }).weight ?? 3)
   const model = (lesson as { model?: string }).model
@@ -71,16 +73,27 @@ export default async function LessonDetailPage({
 
           <section>
             <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
-              When this might come up
+              Trigger — when this might come up
             </h2>
             <p className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed">
               {trigger}
             </p>
           </section>
 
+          {detection && (
+            <section>
+              <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
+                Detection — concrete check before acting
+              </h2>
+              <p className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed font-mono text-sm bg-neutral-50 border border-neutral-200/70 rounded-md px-3 py-2">
+                {detection}
+              </p>
+            </section>
+          )}
+
           <section>
             <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
-              What I did wrong
+              Mistake — what went wrong
             </h2>
             <p className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed">
               {mistake}
@@ -89,12 +102,23 @@ export default async function LessonDetailPage({
 
           <section>
             <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
-              What to do instead
+              Replacement — what to do instead
             </h2>
             <p className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed">
-              {correction}
+              {replacement}
             </p>
           </section>
+
+          {verification && (
+            <section>
+              <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-1.5">
+                Verification — confirm after acting
+              </h2>
+              <p className="text-base text-neutral-800 whitespace-pre-wrap leading-relaxed font-mono text-sm bg-neutral-50 border border-neutral-200/70 rounded-md px-3 py-2">
+                {verification}
+              </p>
+            </section>
+          )}
 
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">

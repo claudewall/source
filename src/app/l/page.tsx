@@ -159,8 +159,8 @@ export default async function LessonsPage({
             const tags = ((l as { tags?: unknown }).tags ?? []) as string[]
             const title = String((l as { title?: string }).title ?? '')
             const trigger = String((l as { trigger?: string }).trigger ?? '')
-            const correction = String(
-              (l as { correction?: string }).correction ?? '',
+            const replacement = String(
+              (l as { replacement?: string }).replacement ?? '',
             )
             const weight = Number((l as { weight?: number }).weight ?? 3)
             const authorHandle = String(
@@ -196,7 +196,7 @@ export default async function LessonsPage({
                     when: {trigger}
                   </p>
                   <p className="text-sm text-neutral-700 line-clamp-2">
-                    {correction}
+                    {replacement}
                   </p>
                   {tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">

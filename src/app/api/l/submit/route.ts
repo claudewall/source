@@ -4,8 +4,10 @@ import { embedText } from '@/lib/embedding'
 
 const MAX_TITLE = 140
 const MAX_TRIGGER = 500
+const MAX_DETECTION = 600
 const MAX_MISTAKE = 1000
-const MAX_CORRECTION = 1000
+const MAX_REPLACEMENT = 1000
+const MAX_VERIFICATION = 400
 const MAX_PROJECT = 100
 const MAX_TAGS = 5
 const MAX_TAG_LEN = 30
@@ -29,8 +31,10 @@ export async function POST(req: NextRequest) {
   let body: {
     title?: unknown
     trigger?: unknown
+    detection?: unknown
     mistake?: unknown
-    correction?: unknown
+    replacement?: unknown
+    verification?: unknown
     project?: unknown
     tags?: unknown
     weight?: unknown
@@ -58,6 +62,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const detection = String(body.detection ?? '').trim()
+  if (!detection || detection.length > MAX_DETECTION) {
+    return Response.json(
+      { error: `detection must be 1..${MAX_DETECTION} chars` },
+      { status: 400 },
+    )
+  }
+
   const mistake = String(body.mistake ?? '').trim()
   if (!mistake || mistake.length > MAX_MISTAKE) {
     return Response.json(
@@ -66,13 +78,21 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const correction = String(body.correction ?? '').trim()
-  if (!correction || correction.length > MAX_CORRECTION) {
+  const replacement = String(body.replacement ?? '').trim()
+  if (!replacement || replacement.length > MAX_REPLACEMENT) {
     return Response.json(
-      { error: `correction must be 1..${MAX_CORRECTION} chars` },
+      { error: `replacement must be 1..${MAX_REPLACEMENT} chars` },
       { status: 400 },
     )
   }
+
+  const verificationRaw = body.verification
+    ? String(body.verification).trim()
+    : ''
+  const verification =
+    verificationRaw.length > 0
+      ? verificationRaw.slice(0, MAX_VERIFICATION)
+      : undefined
 
   let tags: string[] = []
   if (Array.isArray(body.tags)) {
@@ -103,9 +123,13 @@ export async function POST(req: NextRequest) {
 
   await ensureIndexes()
 
-  // Embed the *trigger + mistake + correction* — that's the situation
-  // future-Claude needs to match. Title is editorial; not in the corpus.
-  const corpus = [trigger, mistake, correction, tags.join(' ')]
+  // Embed trigger + detection + mistake + replacement + tags. The trigger
+  // and mistake carry the natural-language semantics that match user
+  // queries; detection and replacement carry the concrete agent-actionable
+  // patterns that match implementation queries. Title and verification stay
+  // out — title is editorial, verification is a post-action check that
+  // rarely matches a recall query.
+  const corpus = [trigger, detection, mistake, replacement, tags.join(' ')]
     .filter(Boolean)
     .join('\n')
   const embedding = await embedText(corpus)
@@ -117,8 +141,10 @@ export async function POST(req: NextRequest) {
     authorImage: user.image,
     title,
     trigger,
+    detection,
     mistake,
-    correction,
+    replacement,
+    verification,
     project,
     tags,
     weight,
