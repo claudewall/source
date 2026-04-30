@@ -36,20 +36,28 @@ function buildBashFailureQuery(payload) {
   const command = payload?.tool_input?.command
   if (typeof command !== 'string' || command.length === 0) return null
 
-  // Claude Code's Bash PostToolUse payload only carries:
-  //   { stdout, stderr, interrupted, isImage, noOutputExpected }
-  // No exit code, no success flag. Treat non-empty stderr or interrupted
-  // as the failure signal. (For commands where stderr is informational on
-  // success — e.g. progress bars — this will produce false positives,
-  // but a false-positive recall query is a tiny network call with no
-  // user-visible effect unless lessons match.)
-  const response = payload?.tool_response ?? {}
-  const stderr = typeof response.stderr === 'string' ? response.stderr : ''
-  const interrupted = response.interrupted === true
-  const failed = interrupted || stderr.length > 0
-  if (!failed) return null
+  // Two payload shapes for Bash:
+  //   PostToolUse        — success path. tool_response is the result
+  //                        object: { stdout, stderr, interrupted, ... }.
+  //                        We skip these (no failure to recall about).
+  //   PostToolUseFailure — failure path. tool_response is null;
+  //                        instead `error` is a string with the full
+  //                        formatted error (exit code + stderr text).
+  // Build the query from `command + error` on the failure path; do
+  // nothing on the success path.
+  const event = payload?.hook_event_name
+  let errorText = ''
+  if (event === 'PostToolUseFailure') {
+    errorText = typeof payload.error === 'string' ? payload.error : ''
+  } else if (event === 'PostToolUse') {
+    const response = payload?.tool_response ?? {}
+    const stderr = typeof response.stderr === 'string' ? response.stderr : ''
+    if (response.interrupted !== true && stderr.length === 0) return null
+    errorText = stderr
+  }
+  if (errorText.length === 0 && event !== 'PostToolUseFailure') return null
 
-  const tail = stderr.slice(-STDERR_TAIL)
+  const tail = errorText.slice(-STDERR_TAIL)
   const cmdHead = command.slice(0, QUERY_MAX - tail.length - 2)
   return `${cmdHead}\n${tail}`.slice(0, QUERY_MAX)
 }
@@ -95,12 +103,15 @@ async function main() {
     process.exit(0)
   }
 
-  if (payload?.hook_event_name !== 'PostToolUse') {
-    debugLog('skip-event', { event: payload?.hook_event_name })
+  const event = payload?.hook_event_name
+  if (event !== 'PostToolUse' && event !== 'PostToolUseFailure') {
+    debugLog('skip-event', { event })
     process.exit(0)
   }
 
   debugLog('payload-shape', {
+    event,
+    payload_keys: Object.keys(payload),
     tool_name: payload?.tool_name,
     tool_input_keys: payload?.tool_input ? Object.keys(payload.tool_input) : null,
     tool_response_keys: payload?.tool_response
@@ -109,6 +120,7 @@ async function main() {
     tool_response_preview: payload?.tool_response
       ? JSON.stringify(payload.tool_response).slice(0, 600)
       : null,
+    full_payload_preview: JSON.stringify(payload).slice(0, 1500),
   })
 
   const query = buildBashFailureQuery(payload)
@@ -176,7 +188,7 @@ async function main() {
   const envelope = {
     continue: true,
     hookSpecificOutput: {
-      hookEventName: 'PostToolUse',
+      hookEventName: event,
       additionalContext,
     },
   }
