@@ -82,12 +82,10 @@ function install() {
 
   writeSettings(settings)
 
-  console.log(`✓ Installed ${HOOK_EVENTS.join(' + ')} hooks in ${SETTINGS_PATH}`)
-  console.log(
-    '  On Bash success and failure, claudewall queries your past lessons',
-  )
-  console.log('  and injects matches into the next turn (failure path is the')
-  console.log('  one that most often saves you from improvisation loops).')
+  console.log(`✓ Installed ${HOOK_EVENTS.join(' + ')} hook in ${SETTINGS_PATH}`)
+  console.log('  After any failed Bash command, claudewall queries your past')
+  console.log('  lessons and injects matches into the next turn — so you stop')
+  console.log('  improvising on problems you already solved.')
   console.log('')
   console.log('  Uninstall: npx claudewall hooks uninstall')
 }
