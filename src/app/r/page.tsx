@@ -16,24 +16,13 @@ type RecallRow = {
   _id: ObjectId
   source: 'agent' | 'web'
   query?: string
-  resultIds?: ObjectId[]
   resultCount?: number
   topScore?: number | null
   agentContext?: {
-    sessionId?: string
-    cwd?: string
     project?: string
     triggerCommand?: string
-    triggerError?: string
   } | null
   createdAt?: Date
-}
-
-type LessonHydrated = {
-  _id: string
-  title: string
-  weight?: number
-  trigger?: string
 }
 
 async function signInGitHub() {
@@ -43,13 +32,18 @@ async function signInGitHub() {
 
 function timeAgo(d: Date): string {
   const sec = Math.max(1, Math.floor((Date.now() - d.getTime()) / 1000))
-  if (sec < 60) return `${sec}s ago`
+  if (sec < 60) return `${sec}s`
   const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}m ago`
+  if (min < 60) return `${min}m`
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
+  if (hr < 24) return `${hr}h`
   const days = Math.floor(hr / 24)
-  return `${days}d ago`
+  return `${days}d`
+}
+
+function truncate(s: string, n: number): string {
+  if (s.length <= n) return s
+  return s.slice(0, n) + '…'
 }
 
 function FilterPill({
@@ -150,6 +144,16 @@ export default async function RecallsPage({
       .find(filter)
       .sort({ createdAt: -1 })
       .limit(50)
+      .project({
+        _id: 1,
+        source: 1,
+        query: 1,
+        resultCount: 1,
+        topScore: 1,
+        'agentContext.project': 1,
+        'agentContext.triggerCommand': 1,
+        createdAt: 1,
+      })
       .toArray()) as unknown as RecallRow[]
 
     const distinctRaw = await d
@@ -160,41 +164,6 @@ export default async function RecallsPage({
       .sort()
   } catch {
     // empty state
-  }
-
-  const allLessonIds = new Set<string>()
-  for (const r of rows) {
-    for (const id of r.resultIds ?? []) allLessonIds.add(id.toString())
-  }
-  let lessonsById: Record<string, LessonHydrated> = {}
-  if (allLessonIds.size > 0) {
-    try {
-      const d = await db()
-      const lessons = await d
-        .collection('lessons')
-        .find(
-          {
-            _id: {
-              $in: Array.from(allLessonIds).map((s) => new ObjectId(s)),
-            },
-          },
-          { projection: { title: 1, weight: 1, trigger: 1 } },
-        )
-        .toArray()
-      lessonsById = Object.fromEntries(
-        lessons.map((l) => [
-          (l._id as ObjectId).toString(),
-          {
-            _id: (l._id as ObjectId).toString(),
-            title: String((l as { title?: string }).title ?? '(untitled)'),
-            weight: (l as { weight?: number }).weight,
-            trigger: (l as { trigger?: string }).trigger,
-          },
-        ]),
-      )
-    } catch {
-      // ignore
-    }
   }
 
   const baseQS = {
@@ -212,14 +181,14 @@ export default async function RecallsPage({
         <div className="flex items-baseline gap-3 flex-wrap">
           <h1 className="font-serif text-3xl">Recalls</h1>
           <p className="text-sm text-neutral-600">
-            Audit trail of what's been queried — agent (Bash failures) and
-            web (manual searches).
+            Audit trail of what's been queried — click any row for full
+            detail.
           </p>
         </div>
 
         <div className="mt-5 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16">
+            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
               Source
             </span>
             <FilterPill
@@ -240,7 +209,7 @@ export default async function RecallsPage({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16">
+            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
               Range
             </span>
             {(['24h', '7d', '30d'] as const).map((r) => (
@@ -256,7 +225,7 @@ export default async function RecallsPage({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16">
+            <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
               Show
             </span>
             <FilterPill
@@ -273,7 +242,7 @@ export default async function RecallsPage({
 
           {projects.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs uppercase tracking-wider text-neutral-500 w-16">
+              <span className="text-xs uppercase tracking-wider text-neutral-500 w-16 shrink-0">
                 Project
               </span>
               <FilterPill
@@ -304,143 +273,71 @@ export default async function RecallsPage({
             </p>
           </div>
         ) : (
-          <div className="space-y-4 mt-6">
+          <ul className="space-y-2 mt-6">
             {rows.map((r) => {
               const isAgent = r.source === 'agent'
-              const command =
+              const summary =
                 r.agentContext?.triggerCommand ?? r.query ?? '(empty)'
-              const error = r.agentContext?.triggerError ?? ''
               const proj = r.agentContext?.project
-              const cwd = r.agentContext?.cwd
-              const sessionId = r.agentContext?.sessionId
-              const lessonHits = (r.resultIds ?? [])
-                .map((id) => lessonsById[id.toString()])
-                .filter(Boolean) as LessonHydrated[]
               const noMatch = (r.resultCount ?? 0) === 0
               return (
-                <article
-                  key={r._id.toString()}
-                  className={
-                    'bg-white rounded-2xl shadow-sm overflow-hidden border ' +
-                    (noMatch
-                      ? 'border-amber-200 bg-amber-50/40'
-                      : 'border-transparent')
-                  }
-                >
-                  <header className="px-5 py-3 flex items-center gap-2 text-xs text-neutral-600 border-b border-neutral-100">
-                    <span aria-hidden>{isAgent ? '🤖' : '👤'}</span>
-                    <span>{r.createdAt ? timeAgo(r.createdAt) : ''}</span>
-                    <span className="text-neutral-300">·</span>
-                    <span>{isAgent ? 'agent' : 'web'}</span>
-                    {proj && (
-                      <>
-                        <span className="text-neutral-300">·</span>
-                        <span className="font-mono">{proj}</span>
-                      </>
-                    )}
-                    <span className="ml-auto">
-                      {noMatch ? (
-                        <span className="text-amber-700">⚠ no match</span>
-                      ) : (
-                        <>
-                          {r.resultCount} hit
-                          {r.resultCount === 1 ? '' : 's'}
-                          {typeof r.topScore === 'number' && (
-                            <span className="text-neutral-400 ml-2">
-                              top {r.topScore.toFixed(2)}
+                <li key={r._id.toString()} className="min-w-0">
+                  <Link
+                    href={`/r/${r._id.toString()}`}
+                    className={
+                      'block rounded-xl shadow-sm hover:shadow-md transition border min-w-0 overflow-hidden ' +
+                      (noMatch
+                        ? 'border-amber-200 bg-amber-50/40 hover:bg-amber-50/60'
+                        : 'border-transparent bg-white hover:bg-neutral-50')
+                    }
+                  >
+                    <div className="px-4 py-3 min-w-0">
+                      <div className="flex items-baseline gap-2 text-xs text-neutral-600 min-w-0">
+                        <span aria-hidden className="shrink-0">
+                          {isAgent ? '🤖' : '👤'}
+                        </span>
+                        <span className="shrink-0">
+                          {r.createdAt ? timeAgo(r.createdAt) : ''}
+                        </span>
+                        {proj && (
+                          <>
+                            <span className="text-neutral-300 shrink-0">·</span>
+                            <span className="font-mono truncate min-w-0">
+                              {proj}
                             </span>
+                          </>
+                        )}
+                        <span className="ml-auto shrink-0">
+                          {noMatch ? (
+                            <span className="text-amber-700">⚠ no match</span>
+                          ) : (
+                            <>
+                              {r.resultCount} hit
+                              {r.resultCount === 1 ? '' : 's'}
+                              {typeof r.topScore === 'number' && (
+                                <span className="text-neutral-400 ml-2">
+                                  {r.topScore.toFixed(2)}
+                                </span>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </span>
-                  </header>
-
-                  <div className="px-5 py-4 space-y-3">
-                    {isAgent ? (
-                      <>
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1">
-                            command
-                          </div>
-                          <pre className="bg-neutral-900 text-neutral-100 text-xs rounded-md p-3 overflow-x-auto font-mono whitespace-pre-wrap break-words">
-                            {command}
-                          </pre>
-                        </div>
-                        {error && (
-                          <div>
-                            <div className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1">
-                              error
-                            </div>
-                            <pre className="bg-neutral-50 border border-neutral-200 text-xs text-neutral-800 rounded-md p-3 overflow-x-auto font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                              {error}
-                            </pre>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1">
-                          query
-                        </div>
-                        <p className="text-sm font-mono text-neutral-800">
-                          “{r.query}”
-                        </p>
+                        </span>
+                        <span
+                          className="text-neutral-300 shrink-0"
+                          aria-hidden
+                        >
+                          →
+                        </span>
                       </div>
-                    )}
-
-                    {noMatch ? (
-                      <div className="text-sm text-neutral-700 bg-amber-100/50 rounded-md p-3 border border-amber-200">
-                        <span className="font-medium">No lesson matched.</span>{' '}
-                        Strong candidate to capture — next time you solve
-                        this, run{' '}
-                        <code className="font-mono bg-white px-1 rounded">
-                          /lesson
-                        </code>{' '}
-                        in that session.
-                      </div>
-                    ) : (
-                      lessonHits.length > 0 && (
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1">
-                            matched lessons
-                          </div>
-                          <ul className="space-y-1">
-                            {lessonHits.map((l) => (
-                              <li key={l._id}>
-                                <Link
-                                  href={`/l/${l._id}`}
-                                  className="flex items-baseline gap-2 text-sm hover:underline"
-                                >
-                                  <span className="text-neutral-400 font-mono text-xs shrink-0">
-                                    {'★'.repeat(l.weight ?? 3)}
-                                    {'·'.repeat(5 - (l.weight ?? 3))}
-                                  </span>
-                                  <span className="flex-1 truncate">
-                                    {l.title}
-                                  </span>
-                                  <span className="text-neutral-300">→</span>
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )
-                    )}
-
-                    {(sessionId || cwd) && (
-                      <div className="text-[11px] text-neutral-400 font-mono pt-1">
-                        {sessionId && <span>{sessionId.slice(0, 8)}…</span>}
-                        {sessionId && cwd && (
-                          <span className="text-neutral-300"> · </span>
-                        )}
-                        {cwd && <span>{cwd}</span>}
-                      </div>
-                    )}
-                  </div>
-                </article>
+                      <p className="text-sm text-neutral-800 font-mono mt-1 truncate min-w-0">
+                        {isAgent ? truncate(summary, 120) : `“${truncate(summary, 120)}”`}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
               )
             })}
-          </div>
+          </ul>
         )}
       </div>
     </main>

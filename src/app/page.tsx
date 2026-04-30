@@ -326,7 +326,7 @@ export default async function HomePage() {
                   return (
                     <li key={r._id} className="min-w-0">
                       <Link
-                        href="/r"
+                        href={`/r/${r._id}`}
                         className="block hover:bg-neutral-50 rounded-md -mx-1 px-1 py-1 min-w-0"
                       >
                         <div className="flex items-baseline gap-2 text-xs text-neutral-500 min-w-0">
