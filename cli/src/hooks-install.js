@@ -6,6 +6,11 @@ const os = require('node:os')
 
 const HOOK_COMMAND = 'claudewall hook recall'
 const SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
+// PostToolUse fires only on tool *success*. PostToolUseFailure fires
+// only on tool *failure* (exit non-zero, exception, etc.). We want
+// recall on failure, but installing both ensures coverage if a future
+// CC change collapses these into one event.
+const HOOK_EVENTS = ['PostToolUse', 'PostToolUseFailure']
 
 function readSettings() {
   try {
@@ -39,40 +44,48 @@ function isClaudewallEntry(entry) {
 function install() {
   const settings = readSettings()
   if (!settings.hooks || typeof settings.hooks !== 'object') settings.hooks = {}
-  const post = Array.isArray(settings.hooks.PostToolUse)
-    ? settings.hooks.PostToolUse
-    : []
 
-  // Find existing Bash matcher entry; merge into it if found.
-  let bashEntry = post.find(
-    (e) => e && typeof e === 'object' && e.matcher === 'Bash',
-  )
-  if (!bashEntry) {
-    bashEntry = { matcher: 'Bash', hooks: [] }
-    post.push(bashEntry)
+  let installedCount = 0
+  for (const event of HOOK_EVENTS) {
+    const list = Array.isArray(settings.hooks[event])
+      ? settings.hooks[event]
+      : []
+
+    let bashEntry = list.find(
+      (e) => e && typeof e === 'object' && e.matcher === 'Bash',
+    )
+    if (!bashEntry) {
+      bashEntry = { matcher: 'Bash', hooks: [] }
+      list.push(bashEntry)
+    }
+    if (!Array.isArray(bashEntry.hooks)) bashEntry.hooks = []
+
+    const already = bashEntry.hooks.some(
+      (h) =>
+        h &&
+        typeof h.command === 'string' &&
+        /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command),
+    )
+    if (already) continue
+
+    bashEntry.hooks.push({ type: 'command', command: HOOK_COMMAND })
+    settings.hooks[event] = list
+    installedCount++
   }
-  if (!Array.isArray(bashEntry.hooks)) bashEntry.hooks = []
 
-  const already = bashEntry.hooks.some(
-    (h) =>
-      h &&
-      typeof h.command === 'string' &&
-      /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command),
-  )
-  if (already) {
-    console.log('claudewall PostToolUse hook is already installed.')
+  if (installedCount === 0) {
+    console.log('claudewall hooks are already installed.')
     return
   }
 
-  bashEntry.hooks.push({ type: 'command', command: HOOK_COMMAND })
-  settings.hooks.PostToolUse = post
   writeSettings(settings)
 
-  console.log(`✓ Installed PostToolUse hook in ${SETTINGS_PATH}`)
+  console.log(`✓ Installed ${HOOK_EVENTS.join(' + ')} hooks in ${SETTINGS_PATH}`)
   console.log(
-    '  On any Bash failure, claudewall will inject your matching past lessons',
+    '  On Bash success and failure, claudewall queries your past lessons',
   )
-  console.log('  into the next turn so you stop improvising blind.')
+  console.log('  and injects matches into the next turn (failure path is the')
+  console.log('  one that most often saves you from improvisation loops).')
   console.log('')
   console.log('  Uninstall: npx claudewall hooks uninstall')
 }
@@ -85,30 +98,37 @@ function uninstall() {
     console.error(err.message)
     process.exit(1)
   }
-  const post = Array.isArray(settings?.hooks?.PostToolUse)
-    ? settings.hooks.PostToolUse
-    : []
+  if (!settings.hooks || typeof settings.hooks !== 'object') {
+    console.log('No claudewall hooks were installed.')
+    return
+  }
 
   let removed = 0
-  for (const entry of post) {
-    if (!entry || !Array.isArray(entry.hooks)) continue
-    const before = entry.hooks.length
-    entry.hooks = entry.hooks.filter(
-      (h) =>
-        !(
-          h &&
-          typeof h.command === 'string' &&
-          /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command)
-        ),
+  for (const event of HOOK_EVENTS) {
+    const list = Array.isArray(settings.hooks[event])
+      ? settings.hooks[event]
+      : []
+    for (const entry of list) {
+      if (!entry || !Array.isArray(entry.hooks)) continue
+      const before = entry.hooks.length
+      entry.hooks = entry.hooks.filter(
+        (h) =>
+          !(
+            h &&
+            typeof h.command === 'string' &&
+            /(^|\s)claudewall(@[^\s]+)?\s+hook\s+recall\b/.test(h.command)
+          ),
+      )
+      removed += before - entry.hooks.length
+    }
+    const pruned = list.filter(
+      (e) => e && Array.isArray(e.hooks) && e.hooks.length > 0,
     )
-    removed += before - entry.hooks.length
-  }
-  // Drop matcher entries that have no remaining hooks.
-  settings.hooks.PostToolUse = post.filter(
-    (e) => e && Array.isArray(e.hooks) && e.hooks.length > 0,
-  )
-  if (settings.hooks.PostToolUse.length === 0) {
-    delete settings.hooks.PostToolUse
+    if (pruned.length === 0) {
+      delete settings.hooks[event]
+    } else {
+      settings.hooks[event] = pruned
+    }
   }
   if (Object.keys(settings.hooks).length === 0) {
     delete settings.hooks
@@ -129,19 +149,37 @@ function isInstalled() {
   } catch {
     return false
   }
-  const post = Array.isArray(settings?.hooks?.PostToolUse)
-    ? settings.hooks.PostToolUse
+  // Considered installed if the hook is wired on the failure path
+  // (PostToolUseFailure) — that's the load-bearing event for recall.
+  const failureList = Array.isArray(settings?.hooks?.PostToolUseFailure)
+    ? settings.hooks.PostToolUseFailure
     : []
-  return post.some(isClaudewallEntry)
+  return failureList.some(isClaudewallEntry)
 }
 
 function status() {
-  if (isInstalled()) {
-    console.log('claudewall PostToolUse hook: installed')
-    console.log(`  settings: ${SETTINGS_PATH}`)
-    console.log(`  command:  ${HOOK_COMMAND}`)
+  const settings = (() => {
+    try {
+      return readSettings()
+    } catch {
+      return {}
+    }
+  })()
+  const states = HOOK_EVENTS.map((event) => {
+    const list = Array.isArray(settings?.hooks?.[event])
+      ? settings.hooks[event]
+      : []
+    return { event, installed: list.some(isClaudewallEntry) }
+  })
+  const anyOn = states.some((s) => s.installed)
+  if (anyOn) {
+    console.log(`claudewall hooks (settings: ${SETTINGS_PATH})`)
+    for (const s of states) {
+      console.log(`  ${s.event.padEnd(22)} ${s.installed ? 'installed' : 'not installed'}`)
+    }
+    console.log(`  command:               ${HOOK_COMMAND}`)
   } else {
-    console.log('claudewall PostToolUse hook: not installed')
+    console.log('claudewall hooks: not installed')
     console.log('  install: npx claudewall hooks install')
   }
 }
