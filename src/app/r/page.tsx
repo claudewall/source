@@ -95,7 +95,6 @@ export default async function RecallsPage({
     source?: string
     range?: string
     nomatch?: string
-    q?: string
     project?: string
   }>
 }) {
@@ -128,7 +127,6 @@ export default async function RecallsPage({
     sourceParam === 'agent' || sourceParam === 'web' ? sourceParam : 'all'
   const range = sp.range && RANGE_HOURS[sp.range] ? sp.range : '7d'
   const nomatchOnly = sp.nomatch === '1'
-  const q = (sp.q ?? '').trim().slice(0, 200)
   const project = (sp.project ?? '').trim().slice(0, 100)
 
   const authorId = new ObjectId(sessionUser.id)
@@ -142,15 +140,6 @@ export default async function RecallsPage({
   if (source !== 'all') filter.source = source
   if (nomatchOnly) filter.resultCount = 0
   if (project) filter['agentContext.project'] = project
-  if (q) {
-    const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const rx = { $regex: safe, $options: 'i' }
-    filter.$or = [
-      { query: rx },
-      { 'agentContext.triggerCommand': rx },
-      { 'agentContext.triggerError': rx },
-    ]
-  }
 
   let rows: RecallRow[] = []
   let projects: string[] = []
@@ -212,7 +201,6 @@ export default async function RecallsPage({
     source: source !== 'all' ? source : undefined,
     range: range !== '7d' ? range : undefined,
     nomatch: nomatchOnly ? '1' : undefined,
-    q: q || undefined,
     project: project || undefined,
   }
 
@@ -282,42 +270,6 @@ export default async function RecallsPage({
               href={buildHref(baseQS, { nomatch: '1' })}
             />
           </div>
-
-          <form
-            action="/r"
-            method="get"
-            className="flex items-center gap-2 mt-3"
-          >
-            {source !== 'all' && (
-              <input type="hidden" name="source" value={source} />
-            )}
-            {range !== '7d' && <input type="hidden" name="range" value={range} />}
-            {nomatchOnly && <input type="hidden" name="nomatch" value="1" />}
-            {project && (
-              <input type="hidden" name="project" value={project} />
-            )}
-            <input
-              type="text"
-              name="q"
-              defaultValue={q}
-              placeholder="Search command, query, or error…"
-              className="flex-1 px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-            <button
-              type="submit"
-              className="px-3 py-1.5 text-sm bg-black text-white rounded-md"
-            >
-              Go
-            </button>
-            {(q || project) && (
-              <Link
-                href={buildHref(baseQS, { q: undefined, project: undefined })}
-                className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-900"
-              >
-                clear
-              </Link>
-            )}
-          </form>
 
           {projects.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
