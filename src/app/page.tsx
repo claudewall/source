@@ -242,9 +242,9 @@ export default async function HomePage() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-4 min-w-0">
           {/* Lessons column */}
-          <section className="bg-white rounded-2xl shadow-sm p-5 flex flex-col">
+          <section className="bg-white rounded-2xl shadow-sm p-5 flex flex-col min-w-0 overflow-hidden">
             <div className="flex items-baseline justify-between mb-3">
               <div className="flex items-baseline gap-3">
                 <h2 className="font-serif text-xl">Lessons</h2>
@@ -270,16 +270,16 @@ export default async function HomePage() {
             ) : (
               <ul className="space-y-2 flex-1">
                 {recentLessons.map((l) => (
-                  <li key={l._id}>
+                  <li key={l._id} className="min-w-0">
                     <Link
                       href={`/l/${l._id}`}
-                      className="flex items-baseline gap-2 hover:underline"
+                      className="flex items-baseline gap-2 hover:underline min-w-0"
                     >
                       <span className="text-neutral-400 font-mono text-xs shrink-0">
                         {'★'.repeat(l.weight ?? 3)}
                         {'·'.repeat(5 - (l.weight ?? 3))}
                       </span>
-                      <span className="text-sm flex-1 truncate">
+                      <span className="text-sm flex-1 truncate min-w-0">
                         {l.title}
                       </span>
                       {l.createdAt && (
@@ -298,7 +298,7 @@ export default async function HomePage() {
           </section>
 
           {/* Recalls column */}
-          <section className="bg-white rounded-2xl shadow-sm p-5 flex flex-col">
+          <section className="bg-white rounded-2xl shadow-sm p-5 flex flex-col min-w-0 overflow-hidden">
             <div className="flex items-baseline justify-between mb-3">
               <div className="flex items-baseline gap-3">
                 <h2 className="font-serif text-xl">Recalls</h2>
@@ -324,25 +324,27 @@ export default async function HomePage() {
                   const cmd = r.triggerCommand ?? r.query
                   const noMatch = r.resultCount === 0
                   return (
-                    <li key={r._id}>
+                    <li key={r._id} className="min-w-0">
                       <Link
                         href="/r"
-                        className="block hover:bg-neutral-50 rounded-md -mx-1 px-1 py-1"
+                        className="block hover:bg-neutral-50 rounded-md -mx-1 px-1 py-1 min-w-0"
                       >
-                        <div className="flex items-baseline gap-2 text-xs text-neutral-500">
-                          <span aria-hidden>
+                        <div className="flex items-baseline gap-2 text-xs text-neutral-500 min-w-0">
+                          <span aria-hidden className="shrink-0">
                             {r.source === 'agent' ? '🤖' : '👤'}
                           </span>
-                          <span>{timeAgo(r.createdAt)}</span>
+                          <span className="shrink-0">
+                            {timeAgo(r.createdAt)}
+                          </span>
                           {r.project && (
                             <>
-                              <span className="text-neutral-300">·</span>
-                              <span className="font-mono truncate">
+                              <span className="text-neutral-300 shrink-0">·</span>
+                              <span className="font-mono truncate min-w-0">
                                 {r.project}
                               </span>
                             </>
                           )}
-                          <span className="ml-auto">
+                          <span className="ml-auto shrink-0">
                             {noMatch ? (
                               <span className="text-amber-600">⚠ 0</span>
                             ) : (
@@ -366,7 +368,7 @@ export default async function HomePage() {
         </div>
 
         {nomatchGroups.length > 0 && (
-          <section className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 space-y-3">
+          <section className="bg-amber-50/60 border border-amber-200 rounded-2xl p-5 space-y-3 min-w-0 overflow-hidden">
             <div className="flex items-baseline gap-2">
               <span aria-hidden>⚠</span>
               <h2 className="font-serif text-lg">
@@ -383,10 +385,10 @@ export default async function HomePage() {
               {nomatchGroups.map((g, i) => (
                 <li
                   key={i}
-                  className="flex items-baseline gap-2 text-sm font-mono text-neutral-800"
+                  className="flex items-baseline gap-2 text-sm font-mono text-neutral-800 min-w-0"
                 >
                   <span className="text-neutral-400 shrink-0">•</span>
-                  <span className="flex-1 truncate">
+                  <span className="flex-1 truncate min-w-0">
                     {truncate(g.command, 90)}
                   </span>
                   {g.project && (
