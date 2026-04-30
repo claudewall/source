@@ -31,20 +31,19 @@ function loadConfig() {
   }
 }
 
-function buildBashFailureQuery(payload) {
+function extractBashFailure(payload) {
+  // Returns { command, errorText } for a Bash failure event, or null
+  // if the payload isn't a Bash failure we should recall on. Two
+  // payload shapes:
+  //   PostToolUse        — success. tool_response = { stdout, stderr,
+  //                        interrupted, ... }. Skip.
+  //   PostToolUseFailure — failure. tool_response is null; payload.error
+  //                        is the full formatted error string (exit code
+  //                        + stderr).
   if (payload?.tool_name !== 'Bash') return null
   const command = payload?.tool_input?.command
   if (typeof command !== 'string' || command.length === 0) return null
 
-  // Two payload shapes for Bash:
-  //   PostToolUse        — success path. tool_response is the result
-  //                        object: { stdout, stderr, interrupted, ... }.
-  //                        We skip these (no failure to recall about).
-  //   PostToolUseFailure — failure path. tool_response is null;
-  //                        instead `error` is a string with the full
-  //                        formatted error (exit code + stderr text).
-  // Build the query from `command + error` on the failure path; do
-  // nothing on the success path.
   const event = payload?.hook_event_name
   let errorText = ''
   if (event === 'PostToolUseFailure') {
@@ -54,9 +53,38 @@ function buildBashFailureQuery(payload) {
     const stderr = typeof response.stderr === 'string' ? response.stderr : ''
     if (response.interrupted !== true && stderr.length === 0) return null
     errorText = stderr
+  } else {
+    return null
   }
-  if (errorText.length === 0 && event !== 'PostToolUseFailure') return null
 
+  return { command, errorText }
+}
+
+function projectFromCwd(cwd) {
+  if (typeof cwd !== 'string' || cwd.length === 0) return null
+  // Walk up looking for a .git/config with an origin URL — same logic
+  // as cli/src/publish.js so the project label matches across surfaces.
+  let dir = cwd
+  for (let i = 0; i < 10; i++) {
+    const cfgPath = path.join(dir, '.git', 'config')
+    try {
+      const txt = fs.readFileSync(cfgPath, 'utf8')
+      const m =
+        txt.match(/url\s*=\s*[^@\s]+@[^:]+:([^/\s]+\/[^/\s.]+)(?:\.git)?/) ||
+        txt.match(/url\s*=\s*https?:\/\/[^/]+\/([^/\s]+\/[^/\s.]+)(?:\.git)?/)
+      if (m && m[1]) return m[1]
+    } catch {
+      // not here, walk up
+    }
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return path.basename(cwd)
+}
+
+function buildBashFailureQuery(failure) {
+  const { command, errorText } = failure
   const tail = errorText.slice(-STDERR_TAIL)
   const cmdHead = command.slice(0, QUERY_MAX - tail.length - 2)
   return `${cmdHead}\n${tail}`.slice(0, QUERY_MAX)
@@ -123,22 +151,39 @@ async function main() {
     full_payload_preview: JSON.stringify(payload).slice(0, 1500),
   })
 
-  const query = buildBashFailureQuery(payload)
-  debugLog('query-built', { hasQuery: Boolean(query), tool: payload?.tool_name })
-  if (!query) process.exit(0)
+  const failure = extractBashFailure(payload)
+  debugLog('query-built', {
+    hasFailure: Boolean(failure),
+    tool: payload?.tool_name,
+  })
+  if (!failure) process.exit(0)
 
   const cfg = loadConfig()
   if (!cfg) process.exit(0)
 
+  const query = buildBashFailureQuery(failure)
+  const agentContext = {
+    sessionId: typeof payload?.session_id === 'string' ? payload.session_id : undefined,
+    cwd: typeof payload?.cwd === 'string' ? payload.cwd : undefined,
+    project: projectFromCwd(payload?.cwd),
+    triggerCommand: failure.command,
+    triggerError: failure.errorText,
+  }
+
   const api = cfg.api || 'https://claudewall.com'
-  const url = `${api}/api/l/recall?q=${encodeURIComponent(query)}`
+  const url = `${api}/api/l/recall`
 
   let res
   try {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS)
     res = await fetch(url, {
-      headers: { Authorization: 'Bearer ' + cfg.token },
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + cfg.token,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ q: query, agentContext }),
       signal: ctrl.signal,
     })
     clearTimeout(timer)
