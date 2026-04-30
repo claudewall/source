@@ -123,7 +123,20 @@ async function main() {
     lines.push('---')
     lines.push('')
   }
-  process.stdout.write(lines.join('\n'))
+  // Claude Code only injects PostToolUse hook output into the model's
+  // context when the hook stdout is a JSON envelope with
+  // `hookSpecificOutput.additionalContext`. Plain stdout is shown to the
+  // user but never reaches the model. 10k-char cap on additionalContext.
+  const additionalContext = lines.join('\n').slice(0, 9800)
+  process.stdout.write(
+    JSON.stringify({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext,
+      },
+    }),
+  )
   process.exit(0)
 }
 
