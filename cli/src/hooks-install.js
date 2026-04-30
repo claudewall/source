@@ -122,13 +122,21 @@ function uninstall() {
   }
 }
 
-function status() {
-  const settings = readSettings()
+function isInstalled() {
+  let settings
+  try {
+    settings = readSettings()
+  } catch {
+    return false
+  }
   const post = Array.isArray(settings?.hooks?.PostToolUse)
     ? settings.hooks.PostToolUse
     : []
-  const installed = post.some(isClaudewallEntry)
-  if (installed) {
+  return post.some(isClaudewallEntry)
+}
+
+function status() {
+  if (isInstalled()) {
     console.log('claudewall PostToolUse hook: installed')
     console.log(`  settings: ${SETTINGS_PATH}`)
     console.log(`  command:  ${HOOK_COMMAND}`)
@@ -138,7 +146,7 @@ function status() {
   }
 }
 
-module.exports = { install, uninstall, status, SETTINGS_PATH, HOOK_COMMAND }
+module.exports = { install, uninstall, status, isInstalled, SETTINGS_PATH, HOOK_COMMAND }
 
 function isEntryPoint() {
   // Invoked via `claudewall hooks ...` from bin/claudewall.js? Then the

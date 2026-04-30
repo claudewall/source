@@ -3,7 +3,28 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
+const readline = require('node:readline')
 const { spawn } = require('node:child_process')
+
+function prompt(question, defaultYes = true) {
+  return new Promise((resolve) => {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      resolve(defaultYes)
+      return
+    }
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+    const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] '
+    rl.question(question + suffix, (answer) => {
+      rl.close()
+      const a = String(answer || '').trim().toLowerCase()
+      if (a === '') resolve(defaultYes)
+      else resolve(a === 'y' || a === 'yes')
+    })
+  })
+}
 
 const API = process.env.CLAUDEWALL_API || 'https://claudewall.com'
 
@@ -103,28 +124,31 @@ async function main() {
         console.log(`✓ Installed ${cmd.label} at ${dstPath}`)
       }
 
-      try {
-        require('./hooks-install.js').install()
-      } catch (err) {
-        // Some versions expose install via subcommand dispatch only; fall
-        // back to spawning the helper as a child to keep init resilient.
-        try {
-          require('node:child_process').spawnSync(
-            process.execPath,
-            [path.join(__dirname, '..', 'bin', 'claudewall.js'), 'hooks', 'install'],
-            { stdio: 'inherit' },
-          )
-        } catch {
-          console.log(
-            '  (skip) could not auto-install PostToolUse hook: ' + err.message,
-          )
-          console.log('  install it later: npx claudewall hooks install')
+      const hooks = require('./hooks-install.js')
+      const alreadyInstalled = hooks.isInstalled()
+      console.log('')
+      if (alreadyInstalled) {
+        console.log('✓ PostToolUse hook already installed in ~/.claude/settings.json')
+      } else {
+        console.log('Optional: install a PostToolUse hook in ~/.claude/settings.json')
+        console.log('that runs after every Bash call. On non-zero exit it queries your')
+        console.log('past lessons and injects matching ones into Claude\'s next turn.')
+        console.log('No-op on success. Uninstall any time: npx claudewall hooks uninstall')
+        const yes = await prompt('Install the hook now?', true)
+        if (yes) {
+          try {
+            hooks.install()
+          } catch (err) {
+            console.log('  (skip) hook install failed: ' + err.message)
+            console.log('  retry later: npx claudewall hooks install')
+          }
+        } else {
+          console.log('  Skipped. You can install it later: npx claudewall hooks install')
         }
       }
 
       console.log('')
       console.log('All set. Run /lesson to capture and /recall to retrieve.')
-      console.log('Bash failures will auto-pull your matching past lessons.')
       return
     }
   }
